@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-13
+
 ### Added
 - **Postcodes to check.** Postcodes that may be typos get a wavy amber underline in the postcode box, the breakdown and history, with the reason on hover and a "postcodes to check" link listing them all. Flags text that isn't a UK postcode, and postcodes one key slip away from one you use much more often (e.g. `BS15 8SB` among many `BS15 8DB`s).
 - **Cancel a calculation.** While calculating, the Calculate button becomes Cancel, which stops the lookups and restores the previous results.
@@ -25,6 +27,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The history panel heading is now "History", to make room for the Import and Export buttons.
 - The bars between the postcode box, the breakdown and the history panel are now visible, with grab handles, and slightly wider to grab. Dragging them resizes the boxes, within limits that keep every control usable.
 - History journey rows show the full route (`BS15 8DB -> BS5 8NG -> ...`) with the distance on the right, so widening the panel reveals more stops.
+- Documentation moved from `docs` to `Documentation`.
 
 ### Fixed
 - Two postcodes with no comma between them (`BS14 0SL BS15 8DB`) are split apart instead of failing as one unknown postcode.
@@ -74,7 +77,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 First release: calculate driving distances between UK postcodes using postcodes.io and Project OSRM, with multi-stop routes, several journeys at once (separated by `;`), miles/kilometres, an optional date tag, an in-session history list and copy buttons.
 
-[Unreleased]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/compare/2.1.0...HEAD
+[Unreleased]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/compare/2.2.0...HEAD
+[2.2.0]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/compare/2.1.0...2.2.0
 [2.1.0]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/compare/2.0.0...2.1.0
 [2.0.0]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/compare/1.0...2.0.0
 [1.0]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/releases/tag/1.0
