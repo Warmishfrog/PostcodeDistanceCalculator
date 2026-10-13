@@ -204,6 +204,7 @@ partial class PostcodeDistanceCalculator
         lblInputInfo.ForeColor = Color.FromArgb(30, 64, 175);
         lblInputInfo.Location = new Point(130, 9);
         lblInputInfo.Text = "ℹ️";
+        lblInputInfo.Click += BtnHelp_Click;
 
         txtPostcodes.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         txtPostcodes.BorderStyle = BorderStyle.FixedSingle;
@@ -214,9 +215,10 @@ partial class PostcodeDistanceCalculator
         txtPostcodes.Size = new Size(385, 105);
 
         // ToolTip Configurations
-        string inputTip = "Separate individual postcodes with commas (e.g. AB12 3CD, EF45 6GH).\nSeparate multiple distinct journeys with semicolons (;).";
+        string inputTip = "Separate individual postcodes with commas or new lines (e.g. AB12 3CD, EF45 6GH).\nSeparate multiple distinct journeys with semicolons (;).";
         toolTipInput.SetToolTip(txtPostcodes, inputTip);
         toolTipInput.SetToolTip(lblInputHeader, inputTip);
+        toolTipInput.SetToolTip(lblInputInfo, inputTip + "\nClick for full help.");
         toolTipInput.SetToolTip(btnReopenHistory, "Open Saved Journeys panel");
 
         // Date Controls
@@ -321,8 +323,11 @@ partial class PostcodeDistanceCalculator
         btnCopyJourneyTotal.Click += BtnCopyJourneyTotal_Click;
         toolTipInput.SetToolTip(btnCopyJourneyTotal, "Copy Journey Total");
 
-        lblStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-        lblStatus.AutoSize = true;
+        // Fixed width + ellipsis so long error messages don't run off the panel (full text shows on hover)
+        lblStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+        lblStatus.AutoSize = false;
+        lblStatus.AutoEllipsis = true;
+        lblStatus.Size = new Size(587, 17);
         lblStatus.Font = new Font("Segoe UI", 8.5F, FontStyle.Italic);
         lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
         lblStatus.Location = new Point(15, 312);
