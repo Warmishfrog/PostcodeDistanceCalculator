@@ -23,6 +23,21 @@ public class IconFontTests
         Assert.NotEqual(Pixels(missing), pixels);
     }
 
+    [Theory]
+    [InlineData(16)]
+    [InlineData(32)]
+    [InlineData(48)]
+    public void App_icon_is_embedded_with_each_size(int size)
+    {
+        using var stream = typeof(IconFont).Assembly.GetManifestResourceStream("app.ico");
+        Assert.NotNull(stream);
+
+        // Asking for an exact size returns that frame, not a rescaled one
+        using var icon = new Icon(stream, size, size);
+        using var bitmap = icon.ToBitmap();
+        Assert.Equal(size, bitmap.Width);
+    }
+
     [Fact]
     public void Icons_are_centred_in_their_square()
     {
