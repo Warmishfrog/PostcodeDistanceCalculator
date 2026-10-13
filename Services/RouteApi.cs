@@ -49,27 +49,16 @@ public static class RouteApi
             string json = (await SendAsync(
                 () => client.PostAsJsonAsync("https://api.postcodes.io/postcodes", new { postcodes = chunk }), "postcodes.io"))!;
 
-            foreach (var (postcode, result) in ParseBulkLookup(json))
-            {
-                switch (result)
-                {
-                    case LookupResult.Found found: locations[postcode] = found.Location; break;
-                    case LookupResult.NoLocation: noLocation.Add(postcode); break;
-                    case LookupResult.NotFound: notFound.Add(postcode); break;
-                }
-            }
+            foreach (var (postcode, exists, location) in ParseBulkLookup(json))
+                Sort(postcode, exists, location);
         }
 
-        // Not in the current list: try postcodes that have been retired (they still have a last known location)
-        foreach (string postcode in notFound.ToList())
-        {
-            var terminated = await GetTerminatedLocationAsync(postcode);
-            if (terminated != null)
-            {
-                locations[postcode] = terminated;
-                notFound.Remove(postcode);
-            }
-        }
+        // Not in the current list: check them all against retired postcodes at once (they still have a last known location)
+        var candidates = notFound.ToList();
+        notFound.Clear();
+        var retired = await Task.WhenAll(candidates.Select(async postcode => (Postcode: postcode, Result: await GetTerminatedLocationAsync(postcode))));
+        foreach (var (postcode, (exists, location)) in retired)
+            Sort(postcode, exists, location);
 
         var problems = new List<string>();
         if (notFound.Count > 0)
@@ -80,6 +69,13 @@ public static class RouteApi
             throw new RouteLookupException(string.Join("\n", problems));
 
         return locations;
+
+        void Sort(string postcode, bool exists, PostcodeLocation? location)
+        {
+            if (location != null) locations[postcode] = location;
+            else if (exists) noLocation.Add(postcode);
+            else notFound.Add(postcode);
+        }
     }
 
     /// <summary>
@@ -103,20 +99,24 @@ public static class RouteApi
         return ParseRoute(json, stops.Count - 1);
     }
 
-    private static async Task<PostcodeLocation?> GetTerminatedLocationAsync(string postcode)
+    /// <summary>
+    /// Looks <paramref name="postcode"/> up in postcodes.io's list of retired postcodes. <c>Exists</c> is false if it was never
+    /// a postcode; <c>Location</c> is null if it existed but has no map location.
+    /// </summary>
+    private static async Task<(bool Exists, PostcodeLocation? Location)> GetTerminatedLocationAsync(string postcode)
     {
         string url = $"https://api.postcodes.io/terminated_postcodes/{Uri.EscapeDataString(postcode)}";
         string? json = await SendAsync(() => client.GetAsync(url), "postcodes.io", notFoundAsNull: true);
-        if (json == null) return null;
+        if (json == null) return (false, null);
 
         try
         {
             using var doc = JsonDocument.Parse(json);
             var result = doc.RootElement.GetProperty("result");
-            if (!TryReadLocation(result, out double lat, out double lon)) return null;
+            if (!TryReadLocation(result, out double lat, out double lon)) return (true, null);
 
             int? yearTerminated = result.TryGetProperty("year_terminated", out var year) && year.ValueKind == JsonValueKind.Number ? year.GetInt32() : null;
-            return new PostcodeLocation(lat, lon, IsTerminated: true, yearTerminated);
+            return (true, new PostcodeLocation(lat, lon, IsTerminated: true, yearTerminated));
         }
         catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
         {
@@ -124,18 +124,13 @@ public static class RouteApi
         }
     }
 
-    /// <summary>Outcome of looking up one postcode in a bulk request.</summary>
-    internal abstract record LookupResult
+    /// <summary>
+    /// Reads a postcodes.io bulk lookup response: one entry per queried postcode. <c>Exists</c> is false when it isn't a
+    /// current postcode; <c>Location</c> is null when it isn't found or has no map location (e.g. PO boxes).
+    /// </summary>
+    internal static IReadOnlyList<(string Postcode, bool Exists, PostcodeLocation? Location)> ParseBulkLookup(string json)
     {
-        public sealed record Found(PostcodeLocation Location) : LookupResult;
-        public sealed record NoLocation : LookupResult;
-        public sealed record NotFound : LookupResult;
-    }
-
-    /// <summary>Reads a postcodes.io bulk lookup response into one result per queried postcode.</summary>
-    internal static IEnumerable<(string Postcode, LookupResult Result)> ParseBulkLookup(string json)
-    {
-        var results = new List<(string, LookupResult)>();
+        var results = new List<(string, bool, PostcodeLocation?)>();
         try
         {
             using var doc = JsonDocument.Parse(json);
@@ -144,14 +139,12 @@ public static class RouteApi
                 string postcode = item.GetProperty("query").GetString() ?? string.Empty;
                 var result = item.GetProperty("result");
 
-                LookupResult outcome = result.ValueKind == JsonValueKind.Null
-                    ? new LookupResult.NotFound()
-                    // Some valid postcodes (non-geographic, PO boxes) come back with null coordinates
-                    : TryReadLocation(result, out double lat, out double lon)
-                        ? new LookupResult.Found(new PostcodeLocation(lat, lon))
-                        : new LookupResult.NoLocation();
-
-                results.Add((postcode, outcome));
+                if (result.ValueKind == JsonValueKind.Null)
+                    results.Add((postcode, false, null));
+                else if (TryReadLocation(result, out double lat, out double lon))
+                    results.Add((postcode, true, new PostcodeLocation(lat, lon)));
+                else
+                    results.Add((postcode, true, null));
             }
         }
         catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
@@ -175,7 +168,13 @@ public static class RouteApi
             if (code == "NoRoute")
                 throw new RouteLookupException("No drivable route could be found between these postcodes.");
             if (code != "Ok")
-                throw new RouteLookupException($"The routing service returned error code '{code}'.");
+            {
+                // OSRM explains errors like InvalidQuery or TooBig in "message"
+                string? message = root.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String ? m.GetString() : null;
+                throw new RouteLookupException(message is null
+                    ? $"The routing service returned error code '{code}'."
+                    : $"The routing service returned error code '{code}': {message}");
+            }
 
             var legs = root.GetProperty("routes")[0].GetProperty("legs");
             var distances = legs.EnumerateArray().Select(leg => leg.GetProperty("distance").GetDouble()).ToList();

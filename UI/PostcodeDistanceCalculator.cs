@@ -430,8 +430,9 @@ public partial class PostcodeDistanceCalculator : Form
         // Right-click selects the row under the cursor (without loading it) so the context menu acts on that row
         if (e.Button == MouseButtons.Right)
         {
+            // Empty space clears the selection, so the menu doesn't open for a row the user didn't click
             int rowIndex = lstHistory.IndexFromPoint(e.Location);
-            if (rowIndex != ListBox.NoMatches) SelectHistoryRowWithoutLoading(rowIndex);
+            SelectHistoryRowWithoutLoading(rowIndex == ListBox.NoMatches ? -1 : rowIndex);
             return;
         }
 
@@ -453,12 +454,8 @@ public partial class PostcodeDistanceCalculator : Form
     /// <summary>Shows a saved batch (all its journeys) or a single saved journey in the breakdown.</summary>
     private void LoadHistoryItem(object item)
     {
-        IReadOnlyList<Journey> journeys = item switch
-        {
-            JourneyBatch batch => [.. batch.Journeys], // Copy so deleting from history doesn't change what's shown
-            JourneyRow row => [row.Journey],
-            _ => []
-        };
+        // A copy, so deleting from history doesn't change what's shown
+        IReadOnlyList<Journey> journeys = HistoryItemJourneys(item);
         if (journeys.Count == 0) return;
 
         txtPostcodes.Text = string.Join(" ; ", journeys.Select(j => j.RawInput));
@@ -470,7 +467,7 @@ public partial class PostcodeDistanceCalculator : Form
         loadedMixedDates = dates.Length > 1 ? dates : null;
 
         // Already in history, so nothing to save. Set after the text changes above, which also disable Save.
-        ShowJourneys(journeys, savable: null, savedIn: item switch { JourneyBatch batch => batch, JourneyRow row => row.Batch, _ => null });
+        ShowJourneys(journeys, savable: null, savedIn: HistoryItemBatch(item));
 
         lblStatus.Text = item is JourneyBatch b
             ? $"Loaded batch from {b.CreatedAt:dd/MM/yyyy HH:mm} ({JourneyCount(journeys.Count)})."
@@ -529,11 +526,11 @@ public partial class PostcodeDistanceCalculator : Form
                 continue;
             }
 
-            if (!OpenInBrowser(link)) return;
+            if (!OpenInBrowser(link)) break; // Still save and show anything entered before this
 
             string stops = string.Join(", ", journey.Stops.Select(GoogleMapsLink.FormatPostcode));
             string heading = journeys.Count > 1 ? $"Journey {i + 1} of {journeys.Count}: {stops}" : stops;
-            string? current = journey.GoogleMapsKm is double km ? Unit.FormatNumber(km) : null;
+            string? current = journey.GoogleMapsKm is double km ? DistanceInput.Format(Unit.FromKm(km)) : null;
 
             using var dialog = new VerifyDistanceDialog(heading, Unit.FormatNumber(journey.EstimatedKm), Unit.LongName(), current, () => OpenInBrowser(link));
             var result = dialog.ShowDialog(this);
@@ -634,6 +631,7 @@ public partial class PostcodeDistanceCalculator : Form
         lblStatus.Text = "Using this app's estimate instead of Google Maps.";
     }
 
+    /// <summary>The journeys a history row stands for (a copy of a batch's list, or the one journey).</summary>
     private static IReadOnlyList<Journey> HistoryItemJourneys(object item) => item switch
     {
         JourneyBatch batch => [.. batch.Journeys],
@@ -641,6 +639,7 @@ public partial class PostcodeDistanceCalculator : Form
         _ => []
     };
 
+    /// <summary>The saved batch a history row belongs to.</summary>
     private static JourneyBatch? HistoryItemBatch(object item) => item switch
     {
         JourneyBatch batch => batch,

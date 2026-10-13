@@ -17,12 +17,11 @@ public class RouteApiParsingTests
             ]}
             """;
 
-        var results = RouteApi.ParseBulkLookup(json).ToDictionary(r => r.Postcode, r => r.Result);
+        var results = RouteApi.ParseBulkLookup(json).ToDictionary(r => r.Postcode);
 
-        var found = Assert.IsType<RouteApi.LookupResult.Found>(results["SW1A1AA"]);
-        Assert.Equal(new PostcodeLocation(51.50101, -0.141563), found.Location);
-        Assert.IsType<RouteApi.LookupResult.NotFound>(results["ZZ99ZZ"]);
-        Assert.IsType<RouteApi.LookupResult.NoLocation>(results["BX11LT"]);
+        Assert.Equal(("SW1A1AA", true, new PostcodeLocation(51.50101, -0.141563)), results["SW1A1AA"]);
+        Assert.Equal(("ZZ99ZZ", false, (PostcodeLocation?)null), results["ZZ99ZZ"]);
+        Assert.Equal(("BX11LT", true, (PostcodeLocation?)null), results["BX11LT"]);
     }
 
     [Fact]
@@ -44,6 +43,16 @@ public class RouteApiParsingTests
     {
         var ex = Assert.Throws<RouteLookupException>(() => RouteApi.ParseRoute("""{"code":"NoRoute","message":"Impossible route"}""", 1));
         Assert.Contains("No drivable route", ex.Message);
+    }
+
+    [Fact]
+    public void Osrm_error_message_is_included()
+    {
+        var ex = Assert.Throws<RouteLookupException>(() =>
+            RouteApi.ParseRoute("""{"code":"InvalidQuery","message":"Query string malformed close to position 12"}""", 1));
+
+        Assert.Contains("InvalidQuery", ex.Message);
+        Assert.Contains("Query string malformed close to position 12", ex.Message);
     }
 
     [Fact]

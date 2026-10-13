@@ -67,6 +67,10 @@ public sealed class GoogleMapsVerificationTests : IDisposable
     [InlineData("210.4 mi", 210.4)]
     [InlineData(" 1,204 km", 1204)]
     [InlineData("about 15 miles", 15)]
+    [InlineData("210,4", 210.4)]
+    [InlineData("25 min (12.3 miles)", 12.3)]
+    [InlineData("1 hr 5 min 52 mi", 52)]
+    [InlineData("12.3 km.", 12.3)]
     public void Typed_distances_are_read(string text, double expected)
     {
         Assert.True(DistanceInput.TryParse(text, out double distance));
@@ -80,6 +84,18 @@ public sealed class GoogleMapsVerificationTests : IDisposable
     public void Invalid_distances_are_rejected(string text)
     {
         Assert.False(DistanceInput.TryParse(text, out _));
+    }
+
+    [Fact]
+    public void Prefilled_figure_reads_back_exactly_on_comma_decimal_systems()
+    {
+        CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+
+        string prefilled = DistanceInput.Format(210.4);
+
+        Assert.Equal("210.4", prefilled);
+        Assert.True(DistanceInput.TryParse(prefilled, out double distance));
+        Assert.Equal(210.4, distance, precision: 6);
     }
 
     [Fact]
