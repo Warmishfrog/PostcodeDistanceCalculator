@@ -46,6 +46,10 @@ partial class PostcodeDistanceCalculator
         btnCalculate = new Button();
         btnAddNew = new Button();
         lblBreakdownHeader = new Label();
+        flowBreakdownOptions = new FlowLayoutPanel();
+        chkCompact = new CheckBox();
+        chkLegDistances = new CheckBox();
+        chkShowEstimate = new CheckBox();
         txtResults = new WarningTextBox();
         flowJourneyTotal = new FlowLayoutPanel();
         lblJourneyTotal = new Label();
@@ -77,6 +81,7 @@ partial class PostcodeDistanceCalculator
         splitContainerLeft.SuspendLayout();
         grpUnits.SuspendLayout();
         flowJourneyTotal.SuspendLayout();
+        flowBreakdownOptions.SuspendLayout();
         mnuHistory.SuspendLayout();
         SuspendLayout();
         //
@@ -176,6 +181,7 @@ partial class PostcodeDistanceCalculator
         //
         splitContainerLeft.Panel2.BackColor = Color.FromArgb(248, 250, 252);
         splitContainerLeft.Panel2.Controls.Add(lblBreakdownHeader);
+        splitContainerLeft.Panel2.Controls.Add(flowBreakdownOptions);
         splitContainerLeft.Panel2.Controls.Add(txtResults);
         splitContainerLeft.Panel2.Controls.Add(flowJourneyTotal);
         splitContainerLeft.Panel2.Controls.Add(lblStatus);
@@ -349,6 +355,59 @@ partial class PostcodeDistanceCalculator
         lblBreakdownHeader.TabIndex = 0;
         lblBreakdownHeader.Text = "Journey Breakdown:";
         //
+        // flowBreakdownOptions
+        //
+        flowBreakdownOptions.AutoSize = true;
+        flowBreakdownOptions.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        flowBreakdownOptions.Controls.Add(chkCompact);
+        flowBreakdownOptions.Controls.Add(chkLegDistances);
+        flowBreakdownOptions.Controls.Add(chkShowEstimate);
+        flowBreakdownOptions.Location = new Point(160, 6);
+        flowBreakdownOptions.Name = "flowBreakdownOptions";
+        flowBreakdownOptions.Size = new Size(330, 21);
+        flowBreakdownOptions.TabIndex = 4;
+        flowBreakdownOptions.WrapContents = false;
+        //
+        // chkCompact
+        //
+        chkCompact.AutoSize = true;
+        chkCompact.Font = new Font("Segoe UI", 8.5F);
+        chkCompact.ForeColor = Color.FromArgb(51, 65, 85);
+        chkCompact.Margin = new Padding(0, 0, 10, 0);
+        chkCompact.Name = "chkCompact";
+        chkCompact.TabIndex = 0;
+        chkCompact.Text = "Compact";
+        toolTipInput.SetToolTip(chkCompact, "Show each journey's legs on one line instead of the full breakdown");
+        chkCompact.CheckedChanged += BreakdownOption_CheckedChanged;
+        //
+        // chkLegDistances
+        //
+        chkLegDistances.AutoSize = true;
+        chkLegDistances.Checked = true;
+        chkLegDistances.CheckState = CheckState.Checked;
+        chkLegDistances.Font = new Font("Segoe UI", 8.5F);
+        chkLegDistances.ForeColor = Color.FromArgb(51, 65, 85);
+        chkLegDistances.Margin = new Padding(0, 0, 10, 0);
+        chkLegDistances.Name = "chkLegDistances";
+        chkLegDistances.TabIndex = 1;
+        chkLegDistances.Text = "Leg distances";
+        toolTipInput.SetToolTip(chkLegDistances, "Show the distance of each individual leg");
+        chkLegDistances.CheckedChanged += BreakdownOption_CheckedChanged;
+        //
+        // chkShowEstimate
+        //
+        chkShowEstimate.AutoSize = true;
+        chkShowEstimate.Checked = true;
+        chkShowEstimate.CheckState = CheckState.Checked;
+        chkShowEstimate.Font = new Font("Segoe UI", 8.5F);
+        chkShowEstimate.ForeColor = Color.FromArgb(51, 65, 85);
+        chkShowEstimate.Margin = new Padding(0);
+        chkShowEstimate.Name = "chkShowEstimate";
+        chkShowEstimate.TabIndex = 2;
+        chkShowEstimate.Text = "Estimate vs Google";
+        toolTipInput.SetToolTip(chkShowEstimate, "For journeys verified with Google Maps, also show this app's own estimate");
+        chkShowEstimate.CheckedChanged += BreakdownOption_CheckedChanged;
+        //
         // txtResults
         //
         txtResults.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
@@ -424,9 +483,9 @@ partial class PostcodeDistanceCalculator
         btnVerifyJourney.AutoSize = true;
         btnVerifyJourney.Size = new Size(75, 26);
         btnVerifyJourney.TabIndex = 2;
-        btnVerifyJourney.Text = "Verify";
+        btnVerifyJourney.Text = "Verify in Google Maps";
         btnVerifyJourney.TextImageRelation = TextImageRelation.ImageBeforeText;
-        toolTipInput.SetToolTip(btnVerifyJourney, "Check these journeys in Google Maps and enter Google's distances");
+        toolTipInput.SetToolTip(btnVerifyJourney, "Opens each journey in Google Maps in your web browser, so you can type in Google's distance to replace this app's estimate");
         btnVerifyJourney.UseVisualStyleBackColor = false;
         btnVerifyJourney.Click += BtnVerifyJourney_Click;
         //
@@ -643,6 +702,8 @@ partial class PostcodeDistanceCalculator
         splitContainerLeft.Panel1.ResumeLayout(false);
         splitContainerLeft.Panel1.PerformLayout();
         flowJourneyTotal.ResumeLayout(false);
+        flowBreakdownOptions.ResumeLayout(false);
+        flowBreakdownOptions.PerformLayout();
         flowJourneyTotal.PerformLayout();
         mnuHistory.ResumeLayout(false);
         splitContainerLeft.Panel2.ResumeLayout(false);
@@ -675,6 +736,10 @@ partial class PostcodeDistanceCalculator
     private Button btnCalculate;
     private Button btnAddNew;
     private Label lblBreakdownHeader;
+    private FlowLayoutPanel flowBreakdownOptions;
+    private CheckBox chkCompact;
+    private CheckBox chkLegDistances;
+    private CheckBox chkShowEstimate;
     private WarningTextBox txtResults;
     private FlowLayoutPanel flowJourneyTotal;
     private Label lblJourneyTotal;

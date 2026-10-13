@@ -12,7 +12,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Cancel verifying.** The Google Maps verification window has a Cancel button (and Esc) that discards every figure entered in that run. Stop still ends early and keeps them.
 - **Select several history rows** with Ctrl+click or Shift+click, then right-click to verify or reset them all, or press Delete to remove them.
 - **Collapsible batches** in history: click a batch's chevron, or press Left / Right.
-- The Verify button shows how many journeys it will check, e.g. "Verify (3)".
+- The Verify button reads "Verify in Google Maps (3)", showing how many journeys it will check, and its tooltip explains it opens Google Maps in your browser.
+- **Breakdown options** above the Journey Breakdown: **Compact** puts each journey's legs on one line (`BS15 8DB  ->  BS5 8NG (0.7 mi), BS5 8NG  ->  BS4 3LF (3.4 mi)`), **Leg distances** shows or hides each leg's distance, and **Estimate vs Google** shows or hides this app's estimate beside Google's figure. These choices and Miles/Km are remembered in `settings.json` next to the app.
+- A note that Google Maps distances can change with traffic, roadworks or closures, under verified totals and in the verify window.
 - **Dated journeys.** A line starting with a date and a colon (`21st: BS15 8DB, BS5 8NG, BS15 8DB`) starts a new journey tagged with that date, so a month of dated trips can be pasted in one go. Works alongside commas, semicolons and one postcode per line.
 - The postcode box shows example formats while it is empty.
 - **Export and Import history.** Export saves all history to a `.txt` file in a folder of your choice, readable as a report; Import adds an exported file back in, skipping batches already there.

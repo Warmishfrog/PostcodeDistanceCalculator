@@ -60,6 +60,14 @@ internal sealed class VerifyDistanceDialog : Form
         inputRow.Controls.Add(txtDistance);
         inputRow.Controls.Add(new Label { AutoSize = true, Text = unitName, Margin = new Padding(6, 6, 0, 0) });
         layout.Controls.Add(inputRow);
+        layout.Controls.Add(new Label
+        {
+            AutoSize = true,
+            MaximumSize = wrapWidth,
+            ForeColor = SystemColors.GrayText,
+            Text = BreakdownFormatter.GoogleMapsCaveat,
+            Margin = new Padding(0, 6, 0, 0),
+        });
 
         btnSave = new Button { AutoSize = true, Text = "Save", Enabled = DistanceInput.TryParse(txtDistance.Text, out _) };
         btnSave.Click += (_, _) =>
