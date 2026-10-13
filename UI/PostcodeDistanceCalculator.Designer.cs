@@ -1,4 +1,4 @@
-﻿namespace PostcodeDistanceCalculator;
+﻿namespace PostcodeDistanceCalculator.UI;
 
 partial class PostcodeDistanceCalculator
 {
@@ -57,6 +57,7 @@ partial class PostcodeDistanceCalculator
         // Right Controls (History Sidebar)
         lblHistoryHeader = new Label();
         btnToggleHistory = new Button();
+        btnClearHistory = new Button();
         lstHistory = new ListBox();
         lblHistoryTotal = new Label();
         btnCopyHistoryTotal = new Button();
@@ -127,6 +128,7 @@ partial class PostcodeDistanceCalculator
         splitContainer.Panel2.BackColor = Color.FromArgb(241, 245, 249);
         splitContainer.Panel2.Controls.Add(lblHistoryHeader);
         splitContainer.Panel2.Controls.Add(btnToggleHistory);
+        splitContainer.Panel2.Controls.Add(btnClearHistory);
         splitContainer.Panel2.Controls.Add(lstHistory);
         splitContainer.Panel2.Controls.Add(lblHistoryTotal);
         splitContainer.Panel2.Controls.Add(btnCopyHistoryTotal);
@@ -357,6 +359,20 @@ partial class PostcodeDistanceCalculator
         btnToggleHistory.Click += BtnToggleHistory_Click;
         toolTipInput.SetToolTip(btnToggleHistory, "Close Saved Journeys panel");
 
+        btnClearHistory.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        btnClearHistory.BackColor = Color.FromArgb(226, 232, 240);
+        btnClearHistory.FlatAppearance.BorderSize = 0;
+        btnClearHistory.FlatStyle = FlatStyle.Flat;
+        btnClearHistory.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+        btnClearHistory.ForeColor = Color.FromArgb(185, 28, 28);
+        btnClearHistory.Location = new Point(220, 6);
+        btnClearHistory.Name = "btnClearHistory";
+        btnClearHistory.Size = new Size(55, 24);
+        btnClearHistory.Text = "Clear";
+        btnClearHistory.UseVisualStyleBackColor = false;
+        btnClearHistory.Click += BtnClearHistory_Click;
+        toolTipInput.SetToolTip(btnClearHistory, "Delete all saved journeys");
+
         lstHistory.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         lstHistory.BorderStyle = BorderStyle.FixedSingle;
         lstHistory.DrawMode = DrawMode.OwnerDrawFixed;
@@ -455,6 +471,7 @@ partial class PostcodeDistanceCalculator
 
     private Label lblHistoryHeader;
     private Button btnToggleHistory;
+    private Button btnClearHistory;
     private ListBox lstHistory;
     private Label lblHistoryTotal;
     private Button btnCopyHistoryTotal;

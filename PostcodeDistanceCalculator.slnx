@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="PostcodeDistanceCalculator.csproj" />
+  <Project Path="PostcodeDistanceCalculator.Tests/PostcodeDistanceCalculator.Tests.csproj" />
 </Solution>
