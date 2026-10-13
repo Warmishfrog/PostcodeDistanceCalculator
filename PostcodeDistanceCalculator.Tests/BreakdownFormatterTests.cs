@@ -62,7 +62,7 @@ public sealed class BreakdownFormatterTests : IDisposable
     {
         string text = BreakdownFormatter.Format([MakeJourney("", 0.7, 3.4)], DistanceUnit.Kilometers, compact: true);
 
-        Assert.Contains("P0  ->  P1 (0.7 km), P1  ->  P2 (3.4 km)", text);
+        Assert.StartsWith($"ROUTE BREAKDOWN:{Environment.NewLine}P0  ->  P1 (0.7 km), P1  ->  P2 (3.4 km){Environment.NewLine}", text);
         Assert.Contains("Total: 4.1 km", text);
         Assert.DoesNotContain("Leg 1", text);
     }

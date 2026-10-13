@@ -16,7 +16,7 @@ public static class BreakdownFormatter
     public const string GoogleMapsCaveat = "Google Maps distances can change with circumstances such as traffic, roadworks or closures.";
 
     /// <summary>Formats <paramref name="journeys"/> in <paramref name="unit"/>. Returns an empty string for no journeys.</summary>
-    /// <param name="compact">One line of legs per journey, e.g. "A  ->  B (0.7 mi), B  ->  C (3.4 mi)", instead of one leg per line.</param>
+    /// <param name="compact">One line of legs per journey under its heading, e.g. "A  ->  B (0.7 mi), B  ->  C (3.4 mi)", instead of one leg per line.</param>
     /// <param name="showLegDistances">Show each leg's distance, not just the totals.</param>
     /// <param name="showEstimate">For journeys verified with Google Maps, also show the app's own estimate.</param>
     public static string Format(IReadOnlyList<Journey> journeys, DistanceUnit unit, bool compact = false, bool showLegDistances = true, bool showEstimate = true)
@@ -41,7 +41,9 @@ public static class BreakdownFormatter
                 var legs = journey.Legs.Select(leg => showLegDistances
                     ? $"{leg.Start}  ->  {leg.End} ({unit.FormatNumber(leg.Meters / 1000.0)} {shortUnit})"
                     : $"{leg.Start}  ->  {leg.End}");
-                lines.Add($"{heading}: {string.Join(", ", legs)}");
+                // Legs on their own line, unindented, so the route can be selected and copied cleanly
+                lines.Add($"{heading}:");
+                lines.Add(string.Join(", ", legs));
                 lines.Add($"  Total: {unit.FormatNumber(journey.TotalKm)} {shortUnit}{(journey.IsVerified ? " (Google Maps)" : "")}");
                 if (journey.IsVerified && showEstimate) lines.Add($"  {estimateNote}");
                 if (i < journeys.Count - 1) lines.Add(string.Empty);
