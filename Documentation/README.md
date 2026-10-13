@@ -277,7 +277,7 @@ Postcodes that may be typos get a wavy amber underline in the postcode box, the 
 
 The app's distances are estimates from OpenStreetMap routing. To check a journey against Google Maps, or to use Google's figure instead:
 
-1. **For the current results**, click **Verify** next to **Copy**. **For saved history**, right-click a journey (or a batch header, to go through all its journeys) and choose **Verify with Google Maps...**.
+1. **For the current results**, click **Verify in Google Maps** next to **Copy**. **For saved history**, right-click a journey (or a batch header, to go through all its journeys) and choose **Verify with Google Maps...**.
 2. Google Maps opens in your browser with the journey's postcodes filled in as driving directions (no account or API key needed).
 3. A small window asks for the distance Google shows. Type or paste it (e.g. `210.4` or `210.4 mi`) in the unit the app is showing, then **Save**. **Skip** leaves that journey as it is. When checking several journeys, **Stop** ends there and keeps the figures saved so far, while **Cancel** (or Esc) ends and discards every figure from that run, leaving everything as it was.
 4. The Google figure replaces the app's estimate for that journey's total, the batch and history totals, and copied numbers. The breakdown shows the Google figure with the app's estimate beneath it, and history rows are marked "Google Maps".
@@ -334,7 +334,8 @@ PostcodeDistanceCalculator/
 │   ├── RouteApi.cs                            # Bulk postcode lookup and per-journey OSRM routing, cancellable
 │   ├── RouteLookupException.cs                # Expected lookup/routing failures with user-readable messages
 │   ├── RequestThrottle.cs                     # Keeps OSRM requests at least a second apart
-│   └── HistoryStore.cs                        # Loads/saves history.json next to the executable
+│   ├── HistoryStore.cs                        # Loads/saves history.json next to the executable
+│   └── SettingsStore.cs                       # Loads/saves display choices and units in settings.json
 ├── Resources/
 │   ├── MaterialSymbolsOutlined.ttf            # Icon font subset from fonts.google.com/icons, embedded in the exe
 │   └── app.ico                                # Application icon ("route" Material Symbol)
@@ -342,7 +343,7 @@ PostcodeDistanceCalculator/
 ├── PostcodeDistanceCalculator.csproj      # .NET 10 project file: version, metadata, app icon, DPI mode
 ├── PostcodeDistanceCalculator.slnx        # Solution file containing the app and test projects
 ├── PostcodeDistanceCalculator.Tests/      # xUnit tests for the parser, formatter, models, history store and icon font
-├── docs/
+├── Documentation/
 │   ├── README.md                              # Project documentation (this file)
 │   └── CHANGELOG.md                           # Changes in each version
 ├── CLAUDE.md                              # Local Claude Code instructions (not tracked; must stay at the root)

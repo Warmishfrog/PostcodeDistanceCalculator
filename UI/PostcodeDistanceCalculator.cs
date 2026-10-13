@@ -21,6 +21,8 @@ public partial class PostcodeDistanceCalculator : Form
     private sealed record JourneyRow(JourneyBatch Batch, Journey Journey);
 
     private readonly string historyPath = HistoryStore.DefaultPath;
+    private readonly string settingsPath = SettingsStore.DefaultPath;
+    private bool settingsLoaded;
 
     /// <summary>Saved batches, oldest first (displayed newest first). Persisted on every change.</summary>
     private List<JourneyBatch> history = [];
@@ -204,6 +206,13 @@ public partial class PostcodeDistanceCalculator : Form
         // Here rather than the constructor so DeviceDpi reflects the monitor the window opens on
         RefreshScaledVisuals();
 
+        var settings = SettingsStore.Load(settingsPath);
+        chkCompact.Checked = settings.CompactBreakdown;
+        chkLegDistances.Checked = settings.ShowLegDistances;
+        chkShowEstimate.Checked = settings.ShowEstimate;
+        (settings.Unit == DistanceUnit.Kilometers ? rdoKm : rdoMiles).Checked = true;
+        settingsLoaded = true;
+
         try
         {
             history = HistoryStore.Load(historyPath, out string? corruptBackupPath);
@@ -380,12 +389,12 @@ public partial class PostcodeDistanceCalculator : Form
         RenderResults();
         btnAddNew.Enabled = savable != null;
         btnVerifyJourney.Enabled = journeys.Count > 0;
-        btnVerifyJourney.Text = journeys.Count > 1 ? $"Verify ({journeys.Count})" : "Verify";
+        btnVerifyJourney.Text = journeys.Count > 0 ? $"Verify in Google Maps ({journeys.Count})" : "Verify in Google Maps";
     }
 
     private void RenderResults()
     {
-        txtResults.Text = BreakdownFormatter.Format(shownJourneys, Unit);
+        txtResults.Text = BreakdownFormatter.Format(shownJourneys, Unit, chkCompact.Checked, chkLegDistances.Checked, chkShowEstimate.Checked);
 
         string title = shownJourneys.Count > 1 ? "Combined" : "Journey";
         lblJourneyTotal.Text = $"{title} Total: {Unit.FormatNumber(ShownTotalKm)} {Unit.ShortName()}";
@@ -1141,6 +1150,19 @@ public partial class PostcodeDistanceCalculator : Form
         ShowJourneys([], savable: null);
     }
 
+    private void BreakdownOption_CheckedChanged(object sender, EventArgs e)
+    {
+        RenderResults();
+        SaveSettings();
+    }
+
+    private void SaveSettings()
+    {
+        // Skip the changes made while applying the saved settings on load
+        if (settingsLoaded)
+            SettingsStore.Save(settingsPath, new AppSettings(chkCompact.Checked, chkLegDistances.Checked, chkShowEstimate.Checked, Unit));
+    }
+
     private void UnitToggle_CheckedChanged(object sender, EventArgs e)
     {
         // Both radios are wired; only react to the one becoming checked
@@ -1149,6 +1171,7 @@ public partial class PostcodeDistanceCalculator : Form
         RenderResults();
         lstHistory.Invalidate();
         RecalculateOverallTotal();
+        SaveSettings();
     }
 
     private void BtnToggleHistory_Click(object sender, EventArgs e)
@@ -1250,12 +1273,17 @@ public partial class PostcodeDistanceCalculator : Form
             "• Click the cross on a row (or select it and press Delete) to remove it, or 'Clear' to delete all history (e.g. at month end).\n" +
             "• 'Export' saves all history to a .txt file you can read or keep; 'Import' adds an exported file back in.\n\n" +
             "5. CHECK AGAINST GOOGLE MAPS:\n" +
-            "• Click 'Verify' (or right-click a saved journey or batch) to open each journey in Google Maps.\n" +
+            "• Click 'Verify in Google Maps' (or right-click a saved journey or batch) to open each journey in Google Maps.\n" +
             "• Type in the distance Google shows and it replaces this app's estimate in the totals and history.\n" +
             "• Stop ends early and keeps what you've entered; Cancel discards everything from that run.\n" +
             "• Ctrl+click or Shift+click history rows to verify several at once.\n" +
-            "• Right-click a saved journey and choose 'Use This App's Estimate' to undo.\n\n" +
-            "6. QUICK COPY:\n" +
+            "• Right-click a saved journey and choose 'Use This App's Estimate' to undo.\n" +
+            "• Google Maps distances can change with traffic, roadworks or closures, so the same route may give a different figure on another day.\n\n" +
+            "6. BREAKDOWN OPTIONS:\n" +
+            "• 'Compact' shows each journey's legs on one line.\n" +
+            "• 'Leg distances' shows or hides each leg's distance.\n" +
+            "• 'Estimate vs Google' shows this app's estimate beside Google's figure for verified journeys.\n\n" +
+            "7. QUICK COPY:\n" +
             "• Click a total or its Copy button to copy just the number (e.g. 123.4) for pasting into a spreadsheet.";
 
         MessageBox.Show(helpText, "How to Use", MessageBoxButtons.OK, MessageBoxIcon.Information);

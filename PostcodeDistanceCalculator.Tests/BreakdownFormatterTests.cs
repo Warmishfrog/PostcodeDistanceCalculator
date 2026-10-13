@@ -58,6 +58,43 @@ public sealed class BreakdownFormatterTests : IDisposable
     }
 
     [Fact]
+    public void Compact_puts_each_journeys_legs_on_one_line()
+    {
+        string text = BreakdownFormatter.Format([MakeJourney("", 0.7, 3.4)], DistanceUnit.Kilometers, compact: true);
+
+        Assert.StartsWith($"ROUTE BREAKDOWN:{Environment.NewLine}P0  ->  P1 (0.7 km), P1  ->  P2 (3.4 km){Environment.NewLine}", text);
+        Assert.Contains("Total: 4.1 km", text);
+        Assert.DoesNotContain("Leg 1", text);
+    }
+
+    [Fact]
+    public void Leg_distances_can_be_hidden_in_both_layouts()
+    {
+        var journeys = new[] { MakeJourney("", 0.7, 3.4) };
+
+        string full = BreakdownFormatter.Format(journeys, DistanceUnit.Kilometers, showLegDistances: false);
+        string compact = BreakdownFormatter.Format(journeys, DistanceUnit.Kilometers, compact: true, showLegDistances: false);
+
+        Assert.DoesNotContain("Distance:", full);
+        Assert.Contains("JOURNEY TOTAL: 4.1 KILOMETERS", full);
+        Assert.Contains("P0  ->  P1, P1  ->  P2", compact);
+    }
+
+    [Fact]
+    public void Estimate_can_be_hidden_but_the_google_caveat_stays()
+    {
+        var verified = new[] { MakeJourney("", 10) with { GoogleMapsKm = 9 } };
+
+        string shown = BreakdownFormatter.Format(verified, DistanceUnit.Kilometers);
+        string hidden = BreakdownFormatter.Format(verified, DistanceUnit.Kilometers, showEstimate: false);
+
+        Assert.Contains("this app estimated 10.0", shown);
+        Assert.DoesNotContain("estimated", hidden);
+        Assert.Contains(BreakdownFormatter.GoogleMapsCaveat, hidden);
+        Assert.DoesNotContain(BreakdownFormatter.GoogleMapsCaveat, BreakdownFormatter.Format([MakeJourney("", 10)], DistanceUnit.Kilometers));
+    }
+
+    [Fact]
     public void No_journeys_gives_empty_text()
     {
         Assert.Equal(string.Empty, BreakdownFormatter.Format([], DistanceUnit.Miles));
