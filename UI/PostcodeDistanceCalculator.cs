@@ -53,6 +53,9 @@ public partial class PostcodeDistanceCalculator : Form
     private static readonly Color SaveButtonDisabledBackColor = Color.FromArgb(148, 163, 184);
     private static readonly Color SaveButtonDisabledForeColor = Color.FromArgb(71, 85, 105);
 
+    /// <summary>The app version from the csproj <c>&lt;Version&gt;</c>, e.g. "2.0.0".</summary>
+    private static string AppVersion => typeof(PostcodeDistanceCalculator).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+
     private DistanceUnit Unit => rdoMiles.Checked ? DistanceUnit.Miles : DistanceUnit.Kilometers;
 
     private double ShownTotalKm => shownJourneys.Sum(j => j.TotalKm);
@@ -66,6 +69,9 @@ public partial class PostcodeDistanceCalculator : Form
 
         // Optional date: the hint shows today's date in the expected format
         txtDate.PlaceholderText = DateTime.Now.ToString("dd/MM");
+
+        // Use the exe's own icon (csproj ApplicationIcon) for the window and taskbar instead of the WinForms default
+        Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? Icon;
 
         this.Load += PostcodeDistanceCalculator_Load;
         // Control.Dispose doesn't dispose assigned images, so free the rendered icons with the form
@@ -646,7 +652,7 @@ public partial class PostcodeDistanceCalculator : Form
     private void BtnHelp_Click(object sender, EventArgs e)
     {
         string helpText =
-            "POSTCODE DISTANCE CALCULATOR - HELP\n" +
+            $"POSTCODE DISTANCE CALCULATOR - HELP (version {AppVersion})\n" +
             "───────────────────────────────────────────────\n\n" +
             "1. SINGLE JOURNEY:\n" +
             "Enter postcodes separated by commas (or one per line), then click Calculate or press Ctrl+Enter.\n" +

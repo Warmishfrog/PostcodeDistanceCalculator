@@ -1,5 +1,7 @@
 # UK Postcode Distance Calculator
 
+**Version 2.0.0** · [MIT License](LICENSE)
+
 A lightweight, modern Windows Forms desktop application built with **.NET 10** to calculate driving distances between UK postcodes. The tool supports multi-stop routes, batch processing of multiple independent journeys, live unit conversion (miles / kilometers), interactive route breakdowns, saved history grouped into dated batches, and one-click clipboard copying. It is a portable app: history is saved next to the executable.
 
 <img width="944" height="603" alt="UkPostcodeDistanceCalculator" src="https://github.com/user-attachments/assets/af25fc1f-2530-455d-bef3-2aae538715de" />
@@ -131,7 +133,7 @@ A typical use is adding up all the driving done in a month to claim mileage:
 
 2. **Deduplicated Geocoding**:
    - All unique postcodes across the journey are identified.
-   - Coordinates are queried asynchronously and stored in a temporary dictionary `coords[code] = (Lat, Lon)` so repeated postcodes are only fetched once.
+   - Coordinates are looked up one postcode at a time (each request is awaited, so the window stays responsive) and cached for the whole batch, so a postcode that appears in several journeys is only fetched once.
 
 3. **Sequential Leg Routing**:
    - The app loops through postcodes `0` to `N - 1`, pairing adjacent postcodes (`postcodes[i]` $\to$ `postcodes[i + 1]`).
@@ -145,7 +147,7 @@ A typical use is adding up all the driving done in a month to claim mileage:
 
 ## External API Integrations
 
-The application communicates with two public REST APIs asynchronously using a shared `HttpClient` instance.
+The application communicates with two public REST APIs using a shared `HttpClient` instance (15 second timeout). Requests are made one at a time and awaited, so the window stays responsive while they run.
 
 ### 1. Geocoding via postcodes.io
 
@@ -176,7 +178,8 @@ The application communicates with two public REST APIs asynchronously using a sh
 - **Endpoint**: `http://router.project-osrm.org/route/v1/driving/{startLon},{startLat};{endLon},{endLat}?overview=false`
 - **Method**: `GET`
 - **Purpose**: Computes the optimal driving distance between two coordinates based on OpenStreetMap road network data.
-- **Request Headers**: Custom `User-Agent: WinFormsPostcodeDistanceTool` header included to comply with standard routing API usage policies.
+- **Request Headers**: A custom `User-Agent: WinFormsPostcodeDistanceTool` header identifies the app, as the OSRM usage policy asks.
+- **Usage limits**: `router.project-osrm.org` is OSRM's public demo server. Its [usage policy](https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server) allows at most one request per second and it isn't meant for production use, so heavy use may be rate-limited or blocked. That's fine for personal mileage tracking; anything larger should run its own OSRM server.
 - **Formatting**: Coordinates are explicitly formatted using `CultureInfo.InvariantCulture` (`startLon.ToString(CultureInfo.InvariantCulture)`) to ensure periods (`.`) are used as decimal points regardless of the user's Windows locale.
 - **Response Format**: JSON containing `routes[0].distance` in meters and a `code` string (`"Ok"`, `"NoRoute"`, etc.).
 - **Error Handling**:
@@ -292,11 +295,13 @@ PostcodeDistanceCalculator/
 │   ├── RouteApi.cs                            # postcodes.io and OSRM calls, calibration factor
 │   └── HistoryStore.cs                        # Loads/saves history.json next to the executable
 ├── Resources/
-│   └── MaterialSymbolsOutlined.ttf            # Icon font subset from fonts.google.com/icons, embedded in the exe
+│   ├── MaterialSymbolsOutlined.ttf            # Icon font subset from fonts.google.com/icons, embedded in the exe
+│   └── app.ico                                # Application icon ("route" Material Symbol)
 ├── Program.cs                             # Application entry point with DPI awareness initialization
-├── PostcodeDistanceCalculator.csproj      # .NET 10 project file (WinExe, Nullable, Windows Forms enabled)
+├── PostcodeDistanceCalculator.csproj      # .NET 10 project file: version, metadata, app icon, DPI mode
 ├── PostcodeDistanceCalculator.slnx        # Solution file containing the app and test projects
 ├── PostcodeDistanceCalculator.Tests/      # xUnit tests for the parser, formatter, models, history store and icon font
+├── LICENSE                                # MIT License
 └── README.md                              # Project documentation (this file)
 ```
 
@@ -315,6 +320,8 @@ Each class has XML doc comments describing its role and behaviour.
 
 ## Build and Publish Instructions
 
+The version number lives in `PostcodeDistanceCalculator.csproj` (`<Version>`). It's stamped into the exe's file properties and shown in the Help dialog.
+
 ### Local Development & Running
 
 To build and run the application locally from the command line:
@@ -332,7 +339,7 @@ dotnet test
 
 The tests cover input parsing, breakdown formatting, unit conversion and history saving/loading. They don't call the live APIs.
 
-Or open `PostcodeDistanceCalculator.slnx` in Visual Studio 2026 / Visual Studio Code and press `F5`.
+Or open `PostcodeDistanceCalculator.slnx` in Visual Studio 2026 and press `F5`.
 
 ---
 
@@ -370,7 +377,7 @@ bin/Release/net10.0-windows/win-x64/publish/PostcodeDistanceCalculator.exe
 - **Geocoding**: Powered by [postcodes.io](https://postcodes.io/) (Open-source UK postcode and geodemographic data API based on Ordnance Survey Open Data, Royal Mail PAF, and ONS).
 - **Routing Engine**: Powered by [Project OSRM](https://project-osrm.org/) (Open Source Routing Machine).
 - **Map Data**: [OpenStreetMap](https://www.openstreetmap.org/) contributors under the Open Database License (ODbL).
-- **Icons**: [Material Symbols](https://fonts.google.com/icons) by Google, under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). A subset containing only the icons the app uses is stored in `Resources/` and embedded in the executable, so icons work offline and don't depend on Google Fonts being available. See `UI/IconFont.cs` for how to add icons.
+- **Icons**: [Material Symbols](https://fonts.google.com/icons) by Google, under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). A subset containing only the icons the app uses is stored in `Resources/` and embedded in the executable, so icons work offline and don't depend on Google Fonts being available. See `UI/IconFont.cs` for how to add icons. The application icon is the "route" symbol (Rounded, filled) on the app's colours.
 
 ---
 
@@ -383,4 +390,4 @@ However, all decisions and designs are reviewed and implemented by the author. T
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE) (or your preferred repository license). Feel free to use, modify, and distribute as needed.
+This project is licensed under the [MIT License](LICENSE). The bundled Material Symbols icons are under the Apache License 2.0 (see [Dependencies & Attribution](#dependencies--attribution)).

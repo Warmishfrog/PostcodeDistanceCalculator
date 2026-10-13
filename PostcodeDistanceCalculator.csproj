@@ -12,6 +12,18 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
 
+  <!-- Version and metadata shown in the exe's Properties > Details and in the Help dialog -->
+  <PropertyGroup>
+    <Version>2.0.0</Version>
+    <Product>UK Postcode Distance Calculator</Product>
+    <AssemblyTitle>UK Postcode Distance Calculator</AssemblyTitle>
+    <Description>Calculates UK driving distances between postcodes, with saved, dated journey history.</Description>
+    <Authors>Alex P</Authors>
+    <Copyright>Copyright (c) 2026 Alex P. MIT License.</Copyright>
+    <!-- "route" from Material Symbols Rounded (fonts.google.com/icons) on the app's slate and amber colours -->
+    <ApplicationIcon>Resources\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- Material Symbols icon subset from fonts.google.com/icons, embedded so icons work offline (see UI/IconFont.cs) -->
     <EmbeddedResource Include="Resources\MaterialSymbolsOutlined.ttf" LogicalName="MaterialSymbolsOutlined.ttf" />
