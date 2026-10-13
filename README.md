@@ -241,7 +241,6 @@ PostcodeDistanceCalculator/
 ├── Program.cs                             # Application entry point with DPI awareness initialization
 ├── PostcodeDistanceCalculator.csproj      # .NET 10 project file (WinExe, Nullable, Windows Forms enabled)
 ├── PostcodeDistanceCalculator.slnx        # Modern XML solution file (.NET 10 / Visual Studio 2026)
-├── GEMINI.md                              # Developer architecture notes and publish settings
 └── README.md                              # Project documentation (this file)
 ```
 
