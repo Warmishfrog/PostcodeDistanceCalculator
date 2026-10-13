@@ -1,7 +1,5 @@
 # UK Postcode Distance Calculator
 
-**Version 2.0.0** · [MIT License](LICENSE)
-
 A lightweight, modern Windows Forms desktop application built with **.NET 10** to calculate driving distances between UK postcodes. The tool supports multi-stop routes, batch processing of multiple independent journeys, live unit conversion (miles / kilometers), interactive route breakdowns, saved history grouped into dated batches, and one-click clipboard copying. It is a portable app: history is saved next to the executable.
 
 <img width="944" height="603" alt="UkPostcodeDistanceCalculator" src="https://github.com/user-attachments/assets/af25fc1f-2530-455d-bef3-2aae538715de" />
@@ -179,7 +177,7 @@ The application communicates with two public REST APIs using a shared `HttpClien
 - **Method**: `GET`
 - **Purpose**: Computes the optimal driving distance between two coordinates based on OpenStreetMap road network data.
 - **Request Headers**: A custom `User-Agent: WinFormsPostcodeDistanceTool` header identifies the app, as the OSRM usage policy asks.
-- **Usage limits**: `router.project-osrm.org` is OSRM's public demo server. Its [usage policy](https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server) allows at most one request per second and it isn't meant for production use, so heavy use may be rate-limited or blocked. That's fine for personal mileage tracking; anything larger should run its own OSRM server.
+- **Usage limits**: `router.project-osrm.org` is OSRM's public demo server. Its [usage policy](https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server) allows at most one request per second and it isn't meant for production use, so heavy use may be rate-limited or blocked. The app waits at least one second between routing requests to stay within the limit, so a batch takes roughly a second per leg. That's fine for personal mileage tracking; anything larger should run its own OSRM server.
 - **Formatting**: Coordinates are explicitly formatted using `CultureInfo.InvariantCulture` (`startLon.ToString(CultureInfo.InvariantCulture)`) to ensure periods (`.`) are used as decimal points regardless of the user's Windows locale.
 - **Response Format**: JSON containing `routes[0].distance` in meters and a `code` string (`"Ok"`, `"NoRoute"`, etc.).
 - **Error Handling**:

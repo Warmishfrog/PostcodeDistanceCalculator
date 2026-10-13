@@ -27,6 +27,8 @@
   <ItemGroup>
     <!-- Material Symbols icon subset from fonts.google.com/icons, embedded so icons work offline (see UI/IconFont.cs) -->
     <EmbeddedResource Include="Resources\MaterialSymbolsOutlined.ttf" LogicalName="MaterialSymbolsOutlined.ttf" />
+    <!-- Also embedded (besides ApplicationIcon) so the window gets every icon size, not just the shell's 32 px one -->
+    <EmbeddedResource Include="Resources\app.ico" LogicalName="app.ico" />
   </ItemGroup>
 
 </Project>

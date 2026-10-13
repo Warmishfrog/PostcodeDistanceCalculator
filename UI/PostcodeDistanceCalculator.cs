@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Runtime.InteropServices;
 using PostcodeDistanceCalculator.Extensions;
 using PostcodeDistanceCalculator.Helpers;
@@ -53,8 +54,22 @@ public partial class PostcodeDistanceCalculator : Form
     private static readonly Color SaveButtonDisabledBackColor = Color.FromArgb(148, 163, 184);
     private static readonly Color SaveButtonDisabledForeColor = Color.FromArgb(71, 85, 105);
 
-    /// <summary>The app version from the csproj <c>&lt;Version&gt;</c>, e.g. "2.0.0".</summary>
-    private static string AppVersion => typeof(PostcodeDistanceCalculator).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+    /// <summary>
+    /// The csproj <c>&lt;Version&gt;</c> exactly as written, e.g. "2.0.0" or "2.1.0-beta.1". Read from the informational
+    /// version (AssemblyVersion would drop prerelease labels) with the "+commit" build suffix removed.
+    /// </summary>
+    private static string AppVersion =>
+        typeof(PostcodeDistanceCalculator).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
+        ?? "unknown";
+
+    /// <summary>
+    /// The app icon with all its sizes, embedded from <c>Resources/app.ico</c>. Loaded once for the life of the app.
+    /// (Extracting the exe's icon would only give the shell's 32 px image, and would pick up dotnet.exe's icon when
+    /// run through a host.)
+    /// </summary>
+    private static readonly Icon AppIcon = new(
+        typeof(PostcodeDistanceCalculator).Assembly.GetManifestResourceStream("app.ico")
+            ?? throw new InvalidOperationException("Embedded resource 'app.ico' is missing."));
 
     private DistanceUnit Unit => rdoMiles.Checked ? DistanceUnit.Miles : DistanceUnit.Kilometers;
 
@@ -70,8 +85,8 @@ public partial class PostcodeDistanceCalculator : Form
         // Optional date: the hint shows today's date in the expected format
         txtDate.PlaceholderText = DateTime.Now.ToString("dd/MM");
 
-        // Use the exe's own icon (csproj ApplicationIcon) for the window and taskbar instead of the WinForms default
-        Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? Icon;
+        // Window and taskbar icon; WinForms picks the matching size from the multi-size icon
+        Icon = AppIcon;
 
         this.Load += PostcodeDistanceCalculator_Load;
         // Control.Dispose doesn't dispose assigned images, so free the rendered icons with the form

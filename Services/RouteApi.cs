@@ -19,6 +19,9 @@ public static class RouteApi
     /// </summary>
     public const double CalibrationFactor = 1.07;
 
+    /// <summary>OSRM's public demo server allows at most one request per second, so routing calls are spaced out.</summary>
+    private static readonly RequestThrottle OsrmThrottle = new(TimeSpan.FromSeconds(1));
+
     private static readonly HttpClient client = new()
     {
         Timeout = TimeSpan.FromSeconds(15),
@@ -73,6 +76,7 @@ public static class RouteApi
 
         string url = $"http://router.project-osrm.org/route/v1/driving/{startLon},{startLat};{endLon},{endLat}?overview=false";
 
+        await OsrmThrottle.WaitAsync();
         using var response = await SendGetAsync(url, "the routing service (OSRM)");
 
         if (!response.IsSuccessStatusCode)
