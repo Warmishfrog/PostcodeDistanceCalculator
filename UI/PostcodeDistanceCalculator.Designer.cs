@@ -36,7 +36,8 @@ partial class PostcodeDistanceCalculator
         splitContainerLeft = new SplitContainer();
         lblInputHeader = new Label();
         lblInputInfo = new Label();
-        txtPostcodes = new TextBox();
+        lnkWarnings = new LinkLabel();
+        txtPostcodes = new WarningTextBox();
         lblDateHeader = new Label();
         txtDate = new TextBox();
         grpUnits = new GroupBox();
@@ -45,7 +46,7 @@ partial class PostcodeDistanceCalculator
         btnCalculate = new Button();
         btnAddNew = new Button();
         lblBreakdownHeader = new Label();
-        txtResults = new TextBox();
+        txtResults = new WarningTextBox();
         flowJourneyTotal = new FlowLayoutPanel();
         lblJourneyTotal = new Label();
         btnCopyJourneyTotal = new Button();
@@ -56,6 +57,8 @@ partial class PostcodeDistanceCalculator
         lstHistory = new ListBox();
         lblHistoryTotal = new Label();
         btnCopyHistoryTotal = new Button();
+        btnImportHistory = new Button();
+        btnExportHistory = new Button();
         btnClearHistory = new Button();
         btnToggleHistory = new Button();
         toolTipInput = new ToolTip(components);
@@ -119,6 +122,7 @@ partial class PostcodeDistanceCalculator
         //
         // splitContainer
         //
+        splitContainer.BackColor = Color.FromArgb(203, 213, 225);
         splitContainer.Dock = DockStyle.Fill;
         splitContainer.Location = new Point(0, 50);
         splitContainer.Name = "splitContainer";
@@ -135,16 +139,20 @@ partial class PostcodeDistanceCalculator
         splitContainer.Panel2.Controls.Add(lstHistory);
         splitContainer.Panel2.Controls.Add(lblHistoryTotal);
         splitContainer.Panel2.Controls.Add(btnCopyHistoryTotal);
+        splitContainer.Panel2.Controls.Add(btnImportHistory);
+        splitContainer.Panel2.Controls.Add(btnExportHistory);
         splitContainer.Panel2.Controls.Add(btnClearHistory);
         splitContainer.Panel2.Controls.Add(btnToggleHistory);
-        splitContainer.Panel2MinSize = 220;
+        splitContainer.Panel1MinSize = 400;
+        splitContainer.Panel2MinSize = 300;
         splitContainer.Size = new Size(950, 530);
         splitContainer.SplitterDistance = 620;
-        splitContainer.SplitterWidth = 6;
+        splitContainer.SplitterWidth = 8;
         splitContainer.TabIndex = 0;
         //
         // splitContainerLeft
         //
+        splitContainerLeft.BackColor = Color.FromArgb(203, 213, 225);
         splitContainerLeft.Dock = DockStyle.Fill;
         splitContainerLeft.Location = new Point(0, 0);
         splitContainerLeft.Name = "splitContainerLeft";
@@ -155,6 +163,7 @@ partial class PostcodeDistanceCalculator
         splitContainerLeft.Panel1.BackColor = Color.FromArgb(248, 250, 252);
         splitContainerLeft.Panel1.Controls.Add(lblInputHeader);
         splitContainerLeft.Panel1.Controls.Add(lblInputInfo);
+        splitContainerLeft.Panel1.Controls.Add(lnkWarnings);
         splitContainerLeft.Panel1.Controls.Add(txtPostcodes);
         splitContainerLeft.Panel1.Controls.Add(lblDateHeader);
         splitContainerLeft.Panel1.Controls.Add(txtDate);
@@ -170,10 +179,10 @@ partial class PostcodeDistanceCalculator
         splitContainerLeft.Panel2.Controls.Add(txtResults);
         splitContainerLeft.Panel2.Controls.Add(flowJourneyTotal);
         splitContainerLeft.Panel2.Controls.Add(lblStatus);
-        splitContainerLeft.Panel2MinSize = 0;
+        splitContainerLeft.Panel2MinSize = 150;
         splitContainerLeft.Size = new Size(620, 530);
         splitContainerLeft.SplitterDistance = 185;
-        splitContainerLeft.SplitterWidth = 6;
+        splitContainerLeft.SplitterWidth = 8;
         splitContainerLeft.TabIndex = 0;
         //
         // lblInputHeader
@@ -186,7 +195,7 @@ partial class PostcodeDistanceCalculator
         lblInputHeader.Size = new Size(113, 17);
         lblInputHeader.TabIndex = 0;
         lblInputHeader.Text = "Enter Postcodes:";
-        toolTipInput.SetToolTip(lblInputHeader, "Separate individual postcodes with commas or new lines (e.g. AB12 3CD, EF45 6GH).\nSeparate multiple distinct journeys with semicolons (;).");
+        toolTipInput.SetToolTip(lblInputHeader, "Separate individual postcodes with commas or new lines (e.g. AB12 3CD, EF45 6GH).\nSeparate multiple distinct journeys with semicolons (;), or one per line starting with a date (21st: AB12 3CD, EF45 6GH).");
         //
         // lblInputInfo
         //
@@ -198,8 +207,24 @@ partial class PostcodeDistanceCalculator
         lblInputInfo.Name = "lblInputInfo";
         lblInputInfo.Size = new Size(20, 20);
         lblInputInfo.TabIndex = 1;
-        toolTipInput.SetToolTip(lblInputInfo, "Separate individual postcodes with commas or new lines (e.g. AB12 3CD, EF45 6GH).\nSeparate multiple distinct journeys with semicolons (;).\nClick for full help.");
+        toolTipInput.SetToolTip(lblInputInfo, "Separate individual postcodes with commas or new lines (e.g. AB12 3CD, EF45 6GH).\nSeparate multiple distinct journeys with semicolons (;), or one per line starting with a date (21st: AB12 3CD, EF45 6GH).\nClick for full help.");
         lblInputInfo.Click += BtnHelp_Click;
+        //
+        // lnkWarnings
+        //
+        lnkWarnings.ActiveLinkColor = Color.FromArgb(180, 83, 9);
+        lnkWarnings.AutoSize = true;
+        lnkWarnings.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        lnkWarnings.LinkColor = Color.FromArgb(217, 119, 6);
+        lnkWarnings.Location = new Point(156, 11);
+        lnkWarnings.Name = "lnkWarnings";
+        lnkWarnings.Size = new Size(130, 15);
+        lnkWarnings.TabIndex = 9;
+        lnkWarnings.TabStop = true;
+        lnkWarnings.Text = "1 postcode to check";
+        toolTipInput.SetToolTip(lnkWarnings, "Some postcodes may have typos. Click for details.");
+        lnkWarnings.Visible = false;
+        lnkWarnings.LinkClicked += LnkWarnings_LinkClicked;
         //
         // txtPostcodes
         //
@@ -210,10 +235,11 @@ partial class PostcodeDistanceCalculator
         txtPostcodes.Location = new Point(15, 31);
         txtPostcodes.Multiline = true;
         txtPostcodes.Name = "txtPostcodes";
+        txtPostcodes.PlaceholderText = "One journey:  SW1A 1AA, M1 1AE, EH1 1YZ\r\nSeveral journeys:  SW1A 1AA, M1 1AE ; B1 1AA, LS1 1UR\r\nDated journeys, one per line:  21st: BS15 8DB, BS5 8NG\r\nPostcodes can also go one per line.";
         txtPostcodes.ScrollBars = ScrollBars.Vertical;
         txtPostcodes.Size = new Size(385, 105);
         txtPostcodes.TabIndex = 2;
-        toolTipInput.SetToolTip(txtPostcodes, "Separate individual postcodes with commas or new lines (e.g. AB12 3CD, EF45 6GH).\nSeparate multiple distinct journeys with semicolons (;).\nPress Ctrl+Enter to calculate.");
+        toolTipInput.SetToolTip(txtPostcodes, "Separate individual postcodes with commas or new lines (e.g. AB12 3CD, EF45 6GH).\nSeparate multiple distinct journeys with semicolons (;), or one per line starting with a date (21st: AB12 3CD, EF45 6GH).\nPress Ctrl+Enter to calculate.");
         txtPostcodes.TextChanged += TxtPostcodes_TextChanged;
         txtPostcodes.KeyDown += TxtPostcodes_KeyDown;
         //
@@ -395,6 +421,7 @@ partial class PostcodeDistanceCalculator
         btnVerifyJourney.Location = new Point(244, 0);
         btnVerifyJourney.Margin = new Padding(6, 0, 0, 0);
         btnVerifyJourney.Name = "btnVerifyJourney";
+        btnVerifyJourney.AutoSize = true;
         btnVerifyJourney.Size = new Size(75, 26);
         btnVerifyJourney.TabIndex = 2;
         btnVerifyJourney.Text = "Verify";
@@ -442,9 +469,9 @@ partial class PostcodeDistanceCalculator
         lblHistoryHeader.ForeColor = Color.FromArgb(30, 41, 59);
         lblHistoryHeader.Location = new Point(10, 10);
         lblHistoryHeader.Name = "lblHistoryHeader";
-        lblHistoryHeader.Size = new Size(105, 17);
+        lblHistoryHeader.Size = new Size(55, 17);
         lblHistoryHeader.TabIndex = 0;
-        lblHistoryHeader.Text = "Saved Journeys:";
+        lblHistoryHeader.Text = "History:";
         //
         // lstHistory
         //
@@ -458,6 +485,7 @@ partial class PostcodeDistanceCalculator
         lstHistory.ItemHeight = 26;
         lstHistory.Location = new Point(10, 35);
         lstHistory.Name = "lstHistory";
+        lstHistory.SelectionMode = SelectionMode.MultiExtended;
         lstHistory.Size = new Size(305, 431);
         lstHistory.TabIndex = 1;
         lstHistory.DrawItem += LstHistory_DrawItem;
@@ -498,6 +526,40 @@ partial class PostcodeDistanceCalculator
         btnCopyHistoryTotal.UseVisualStyleBackColor = false;
         btnCopyHistoryTotal.Click += BtnCopyHistoryTotal_Click;
         //
+        // btnImportHistory
+        //
+        btnImportHistory.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        btnImportHistory.BackColor = Color.FromArgb(226, 232, 240);
+        btnImportHistory.FlatAppearance.BorderSize = 0;
+        btnImportHistory.FlatStyle = FlatStyle.Flat;
+        btnImportHistory.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+        btnImportHistory.ForeColor = Color.FromArgb(30, 41, 59);
+        btnImportHistory.Location = new Point(100, 6);
+        btnImportHistory.Name = "btnImportHistory";
+        btnImportHistory.Size = new Size(55, 24);
+        btnImportHistory.TabIndex = 4;
+        btnImportHistory.Text = "Import";
+        toolTipInput.SetToolTip(btnImportHistory, "Add saved journeys from a .txt file made with Export");
+        btnImportHistory.UseVisualStyleBackColor = false;
+        btnImportHistory.Click += BtnImportHistory_Click;
+        //
+        // btnExportHistory
+        //
+        btnExportHistory.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        btnExportHistory.BackColor = Color.FromArgb(226, 232, 240);
+        btnExportHistory.FlatAppearance.BorderSize = 0;
+        btnExportHistory.FlatStyle = FlatStyle.Flat;
+        btnExportHistory.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+        btnExportHistory.ForeColor = Color.FromArgb(30, 41, 59);
+        btnExportHistory.Location = new Point(160, 6);
+        btnExportHistory.Name = "btnExportHistory";
+        btnExportHistory.Size = new Size(55, 24);
+        btnExportHistory.TabIndex = 5;
+        btnExportHistory.Text = "Export";
+        toolTipInput.SetToolTip(btnExportHistory, "Save all saved journeys to a .txt file");
+        btnExportHistory.UseVisualStyleBackColor = false;
+        btnExportHistory.Click += BtnExportHistory_Click;
+        //
         // btnClearHistory
         //
         btnClearHistory.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -509,7 +571,7 @@ partial class PostcodeDistanceCalculator
         btnClearHistory.Location = new Point(220, 6);
         btnClearHistory.Name = "btnClearHistory";
         btnClearHistory.Size = new Size(55, 24);
-        btnClearHistory.TabIndex = 4;
+        btnClearHistory.TabIndex = 6;
         btnClearHistory.Text = "Clear";
         toolTipInput.SetToolTip(btnClearHistory, "Delete all saved journeys");
         btnClearHistory.UseVisualStyleBackColor = false;
@@ -526,7 +588,7 @@ partial class PostcodeDistanceCalculator
         btnToggleHistory.Location = new Point(280, 6);
         btnToggleHistory.Name = "btnToggleHistory";
         btnToggleHistory.Size = new Size(35, 24);
-        btnToggleHistory.TabIndex = 5;
+        btnToggleHistory.TabIndex = 7;
         toolTipInput.SetToolTip(btnToggleHistory, "Close Saved Journeys panel");
         btnToggleHistory.UseVisualStyleBackColor = false;
         btnToggleHistory.Click += BtnToggleHistory_Click;
@@ -603,7 +665,8 @@ partial class PostcodeDistanceCalculator
     private ToolTip toolTipInput;
     private Label lblInputHeader;
     private Label lblInputInfo;
-    private TextBox txtPostcodes;
+    private LinkLabel lnkWarnings;
+    private WarningTextBox txtPostcodes;
     private Label lblDateHeader;
     private TextBox txtDate;
     private GroupBox grpUnits;
@@ -612,7 +675,7 @@ partial class PostcodeDistanceCalculator
     private Button btnCalculate;
     private Button btnAddNew;
     private Label lblBreakdownHeader;
-    private TextBox txtResults;
+    private WarningTextBox txtResults;
     private FlowLayoutPanel flowJourneyTotal;
     private Label lblJourneyTotal;
     private Button btnCopyJourneyTotal;
@@ -624,6 +687,8 @@ partial class PostcodeDistanceCalculator
     private Label lblStatus;
     private Label lblHistoryHeader;
     private Button btnToggleHistory;
+    private Button btnImportHistory;
+    private Button btnExportHistory;
     private Button btnClearHistory;
     private ListBox lstHistory;
     private Label lblHistoryTotal;

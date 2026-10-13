@@ -6,6 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- **Postcodes to check.** Postcodes that may be typos get a wavy amber underline in the postcode box, the breakdown and history, with the reason on hover and a "postcodes to check" link listing them all. Flags text that isn't a UK postcode, and postcodes one key slip away from one you use much more often (e.g. `BS15 8SB` among many `BS15 8DB`s).
+- **Cancel a calculation.** While calculating, the Calculate button becomes Cancel, which stops the lookups and restores the previous results.
+- **Cancel verifying.** The Google Maps verification window has a Cancel button (and Esc) that discards every figure entered in that run. Stop still ends early and keeps them.
+- **Select several history rows** with Ctrl+click or Shift+click, then right-click to verify or reset them all, or press Delete to remove them.
+- **Collapsible batches** in history: click a batch's chevron, or press Left / Right.
+- The Verify button shows how many journeys it will check, e.g. "Verify (3)".
+- **Dated journeys.** A line starting with a date and a colon (`21st: BS15 8DB, BS5 8NG, BS15 8DB`) starts a new journey tagged with that date, so a month of dated trips can be pasted in one go. Works alongside commas, semicolons and one postcode per line.
+- The postcode box shows example formats while it is empty.
+- **Export and Import history.** Export saves all history to a `.txt` file in a folder of your choice, readable as a report; Import adds an exported file back in, skipping batches already there.
+
+### Changed
+- **Distances no longer have 7% added.** They're the routing service's driving distances as they are. History saved by earlier versions keeps its figures.
+- After calculating, and when loading from history, the postcode box is tidied to one journey per line with a blank line between, postcodes spaced and capitalised (`BS15 8DB, BS5 8NG`). Saved journeys with different dates are loaded with their date labels, so recalculating keeps each date.
+- The history panel heading is now "History", to make room for the Import and Export buttons.
+- The bars between the postcode box, the breakdown and the history panel are now visible, with grab handles, and slightly wider to grab. Dragging them resizes the boxes, within limits that keep every control usable.
+- History journey rows show the full route (`BS15 8DB -> BS5 8NG -> ...`) with the distance on the right, so widening the panel reveals more stops.
+
+### Fixed
+- Two postcodes with no comma between them (`BS14 0SL BS15 8DB`) are split apart instead of failing as one unknown postcode.
+
 ## [2.1.0] - 2026-10-13
 
 ### Added

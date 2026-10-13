@@ -64,4 +64,27 @@ public static class BreakdownFormatter
 
         return string.Join(Environment.NewLine, lines);
     }
+
+    /// <summary>
+    /// Formats saved history as a plain-text report for exporting: each batch with its date and breakdown,
+    /// then the overall total.
+    /// </summary>
+    public static string FormatHistory(IReadOnlyList<JourneyBatch> batches, DistanceUnit unit, DateTime exportedAt)
+    {
+        var lines = new List<string> { $"POSTCODE DISTANCE CALCULATOR - SAVED HISTORY (exported {exportedAt:dd/MM/yyyy HH:mm})", string.Empty };
+
+        foreach (var batch in batches)
+        {
+            string journeys = batch.Journeys.Count == 1 ? "1 journey" : $"{batch.Journeys.Count} journeys";
+            lines.Add($"BATCH: {batch.CreatedAt:dd/MM/yyyy HH:mm} ({journeys})");
+            lines.Add(new string('═', RuleWidth));
+            lines.Add(Format(batch.Journeys, unit));
+            lines.Add(string.Empty);
+            lines.Add(string.Empty);
+        }
+
+        lines.Add(new string('═', RuleWidth));
+        lines.Add($"  HISTORY TOTAL: {unit.FormatNumber(batches.Sum(b => b.TotalKm))} {unit.LongName().ToUpperInvariant()}");
+        return string.Join(Environment.NewLine, lines);
+    }
 }

@@ -73,6 +73,35 @@ public static class HistoryStore
         return candidate;
     }
 
+    /// <summary>Separates the readable report in an exported .txt from the data that importing reads back.</summary>
+    internal const string ExportDataMarker = "----- DATA FOR IMPORTING (do not edit below this line) -----";
+
+    /// <summary>
+    /// History as .txt file contents: <paramref name="report"/> for people to read, then the exact data after
+    /// <see cref="ExportDataMarker"/> so <see cref="ParseExport"/> can restore every leg and Google Maps figure.
+    /// </summary>
+    public static string ToExport(string report, IEnumerable<JourneyBatch> batches)
+        => report + Environment.NewLine + Environment.NewLine + Environment.NewLine +
+           ExportDataMarker + Environment.NewLine + JsonSerializer.Serialize(batches, JsonOptions);
+
+    /// <summary>Reads the batches back from text written by <see cref="ToExport"/>.</summary>
+    /// <exception cref="InvalidDataException">The text has no data section, or it was edited or damaged.</exception>
+    public static List<JourneyBatch> ParseExport(string text)
+    {
+        int marker = text.IndexOf(ExportDataMarker, StringComparison.Ordinal);
+        if (marker < 0)
+            throw new InvalidDataException("This file wasn't exported from Postcode Distance Calculator, so there's no history in it to import.");
+
+        try
+        {
+            var batches = JsonSerializer.Deserialize<List<JourneyBatch>>(text[(marker + ExportDataMarker.Length)..], JsonOptions);
+            if (batches != null && IsValid(batches)) return batches;
+        }
+        catch (JsonException) { }
+
+        throw new InvalidDataException("The history data in this file has been edited or damaged, so it can't be imported.");
+    }
+
     /// <summary>
     /// Writes <paramref name="batches"/> to <paramref name="path"/>. Writes to a temporary file first and then
     /// swaps it in, so a crash mid-write can't leave a half-written history file.

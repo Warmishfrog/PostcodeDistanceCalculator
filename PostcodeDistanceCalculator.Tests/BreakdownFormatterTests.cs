@@ -62,4 +62,22 @@ public sealed class BreakdownFormatterTests : IDisposable
     {
         Assert.Equal(string.Empty, BreakdownFormatter.Format([], DistanceUnit.Miles));
     }
+
+    [Fact]
+    public void History_export_lists_each_batch_and_the_overall_total()
+    {
+        var batches = new List<JourneyBatch>
+        {
+            new() { CreatedAt = new DateTime(2026, 10, 1, 9, 30, 0), Journeys = [MakeJourney("21st", 10), MakeJourney("22nd", 5)] },
+            new() { CreatedAt = new DateTime(2026, 10, 2, 18, 0, 0), Journeys = [MakeJourney("", 2.5)] },
+        };
+
+        string text = BreakdownFormatter.FormatHistory(batches, DistanceUnit.Kilometers, new DateTime(2026, 10, 13, 12, 0, 0));
+
+        Assert.Contains("(exported 13/10/2026 12:00)", text);
+        Assert.Contains("BATCH: 01/10/2026 09:30 (2 journeys)", text);
+        Assert.Contains("JOURNEY 1 [21st]", text);
+        Assert.Contains("BATCH: 02/10/2026 18:00 (1 journey)", text);
+        Assert.EndsWith("HISTORY TOTAL: 17.5 KILOMETERS", text);
+    }
 }
