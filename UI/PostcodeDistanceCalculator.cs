@@ -31,9 +31,14 @@ public partial class PostcodeDistanceCalculator : Form
     /// <summary>The last calculation, waiting to be saved. Null when the shown journeys are already in history.</summary>
     private JourneyBatch? unsavedBatch;
 
-    /// <summary>The saved batch the shown journeys were loaded from, so Google Maps figures entered for them are saved too. Null for fresh results.</summary>
     /// <summary>How often each postcode appears across history and the input box, for spotting likely typos.</summary>
     private Dictionary<string, int> postcodeUsage = [];
+
+    /// <summary>
+    /// Each postcode's warning (null if none) for the current <see cref="postcodeUsage"/>. History rows are redrawn
+    /// often (e.g. while dragging a splitter), and checking means comparing against every postcode in use.
+    /// </summary>
+    private readonly Dictionary<string, string?> warningByPostcode = [];
 
     /// <summary>Postcodes flagged in the input box and breakdown, listed when the warnings link is clicked.</summary>
     private List<(string Postcode, string Message)> postcodeWarnings = [];
@@ -508,7 +513,7 @@ public partial class PostcodeDistanceCalculator : Form
         foreach (string stop in journey.Stops)
         {
             string shown = GoogleMapsLink.FormatPostcode(stop);
-            if (PostcodeWarnings.Check(stop, postcodeUsage) != null)
+            if (WarningFor(stop) != null)
             {
                 int start = routeBounds.Left + indent + (prefix.Length == 0 ? 0 : TextRenderer.MeasureText(graphics, prefix, font, Size.Empty, measure).Width);
                 int end = Math.Min(start + TextRenderer.MeasureText(graphics, shown, font, Size.Empty, measure).Width, routeBounds.Right);
@@ -519,10 +524,18 @@ public partial class PostcodeDistanceCalculator : Form
         }
     }
 
+    /// <summary>The warning for one normalised postcode, or null if it looks fine.</summary>
+    private string? WarningFor(string postcode)
+    {
+        if (!warningByPostcode.TryGetValue(postcode, out string? message))
+            warningByPostcode[postcode] = message = PostcodeWarnings.Check(postcode, postcodeUsage);
+        return message;
+    }
+
     /// <summary>Postcode warnings for a journey's stops, one line each, for tooltips and screen readers.</summary>
     private List<string> JourneyWarnings(Journey journey)
         => journey.Stops.Distinct()
-            .Select(stop => (stop, message: PostcodeWarnings.Check(stop, postcodeUsage)))
+            .Select(stop => (stop, message: WarningFor(stop)))
             .Where(w => w.message != null)
             .Select(w => $"{GoogleMapsLink.FormatPostcode(w.stop)}: {w.message}")
             .ToList();
@@ -560,16 +573,17 @@ public partial class PostcodeDistanceCalculator : Form
         var inputSpans = PostcodeWarnings.FindInInput(txtPostcodes.Text);
         postcodeUsage = PostcodeWarnings.CountUsage(
             history.SelectMany(b => b.Journeys).SelectMany(j => j.Stops).Concat(inputSpans.Select(s => s.Postcode)));
+        warningByPostcode.Clear();
 
         var inputWarnings = inputSpans
-            .Select(s => (Span: s, Message: PostcodeWarnings.Check(s.Postcode, postcodeUsage)))
+            .Select(s => (Span: s, Message: WarningFor(s.Postcode)))
             .Where(w => w.Message != null)
             .ToList();
         txtPostcodes.Warnings = inputWarnings.Select(w => new WarningTextBox.TextWarning(w.Span.Start, w.Span.Length, w.Message!)).ToList();
 
         // The breakdown lists postcodes as stored (no space), e.g. "BS158DB"
         var resultWarnings = shownJourneys.SelectMany(j => j.Stops).Distinct()
-            .Select(p => (Postcode: p, Message: PostcodeWarnings.Check(p, postcodeUsage)))
+            .Select(p => (Postcode: p, Message: WarningFor(p)))
             .Where(w => w.Message != null)
             .ToList();
         txtResults.Warnings = resultWarnings

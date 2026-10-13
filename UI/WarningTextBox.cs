@@ -75,6 +75,8 @@ internal sealed class WarningTextBox : TextBox
     /// <summary>The on-screen extent of a text range, one (left, right, top) segment per line it covers.</summary>
     private IEnumerable<(int Left, int Right, int Top)> LineSegments(int start, int length)
     {
+        // Read once: Text asks the native control for a fresh copy every time
+        string text = Text;
         Point first = GetPositionFromCharIndex(start);
         int left = first.X, top = first.Y, right = first.X;
 
@@ -87,7 +89,7 @@ internal sealed class WarningTextBox : TextBox
                 left = position.X;
                 top = position.Y;
             }
-            right = position.X + TextRenderer.MeasureText(Text[i].ToString(), Font, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix).Width;
+            right = position.X + TextRenderer.MeasureText(text[i].ToString(), Font, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix).Width;
         }
         yield return (left, right, top);
     }
