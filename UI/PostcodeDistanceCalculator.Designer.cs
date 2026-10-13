@@ -46,6 +46,7 @@ partial class PostcodeDistanceCalculator
         btnAddNew = new Button();
         lblBreakdownHeader = new Label();
         txtResults = new TextBox();
+        flowJourneyTotal = new FlowLayoutPanel();
         lblJourneyTotal = new Label();
         btnCopyJourneyTotal = new Button();
         lblStatus = new Label();
@@ -67,6 +68,7 @@ partial class PostcodeDistanceCalculator
         splitContainerLeft.Panel2.SuspendLayout();
         splitContainerLeft.SuspendLayout();
         grpUnits.SuspendLayout();
+        flowJourneyTotal.SuspendLayout();
         SuspendLayout();
         //
         // panelHeader
@@ -160,8 +162,7 @@ partial class PostcodeDistanceCalculator
         splitContainerLeft.Panel2.BackColor = Color.FromArgb(248, 250, 252);
         splitContainerLeft.Panel2.Controls.Add(lblBreakdownHeader);
         splitContainerLeft.Panel2.Controls.Add(txtResults);
-        splitContainerLeft.Panel2.Controls.Add(lblJourneyTotal);
-        splitContainerLeft.Panel2.Controls.Add(btnCopyJourneyTotal);
+        splitContainerLeft.Panel2.Controls.Add(flowJourneyTotal);
         splitContainerLeft.Panel2.Controls.Add(lblStatus);
         splitContainerLeft.Panel2MinSize = 0;
         splitContainerLeft.Size = new Size(620, 530);
@@ -183,6 +184,7 @@ partial class PostcodeDistanceCalculator
         //
         // lblInputInfo
         //
+        lblInputInfo.AccessibleName = "Help";
         lblInputInfo.Cursor = Cursors.Hand;
         lblInputInfo.ForeColor = Color.FromArgb(30, 64, 175);
         lblInputInfo.ImageAlign = ContentAlignment.MiddleCenter;
@@ -230,6 +232,7 @@ partial class PostcodeDistanceCalculator
         txtDate.Name = "txtDate";
         txtDate.Size = new Size(75, 24);
         txtDate.TabIndex = 4;
+        txtDate.KeyDown += TxtDate_KeyDown;
         //
         // grpUnits
         //
@@ -329,33 +332,45 @@ partial class PostcodeDistanceCalculator
         txtResults.Size = new Size(587, 240);
         txtResults.TabIndex = 1;
         //
+        // flowJourneyTotal
+        //
+        flowJourneyTotal.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+        flowJourneyTotal.AutoSize = true;
+        flowJourneyTotal.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        flowJourneyTotal.Controls.Add(lblJourneyTotal);
+        flowJourneyTotal.Controls.Add(btnCopyJourneyTotal);
+        flowJourneyTotal.Location = new Point(15, 277);
+        flowJourneyTotal.Name = "flowJourneyTotal";
+        flowJourneyTotal.Size = new Size(238, 26);
+        flowJourneyTotal.TabIndex = 2;
+        flowJourneyTotal.WrapContents = false;
+        //
         // lblJourneyTotal
         //
-        lblJourneyTotal.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
         lblJourneyTotal.AutoSize = true;
         lblJourneyTotal.Cursor = Cursors.Hand;
         lblJourneyTotal.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
         lblJourneyTotal.ForeColor = Color.FromArgb(30, 41, 59);
-        lblJourneyTotal.Location = new Point(15, 280);
+        lblJourneyTotal.Location = new Point(0, 3);
+        lblJourneyTotal.Margin = new Padding(0, 3, 8, 0);
         lblJourneyTotal.Name = "lblJourneyTotal";
         lblJourneyTotal.Size = new Size(160, 20);
-        lblJourneyTotal.TabIndex = 2;
+        lblJourneyTotal.TabIndex = 0;
         lblJourneyTotal.Text = "Journey Total: 0.0 mi";
-        lblJourneyTotal.SizeChanged += LblJourneyTotal_SizeChanged;
         lblJourneyTotal.Click += LblJourneyTotal_Click;
         //
         // btnCopyJourneyTotal
         //
-        btnCopyJourneyTotal.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
         btnCopyJourneyTotal.BackColor = Color.FromArgb(226, 232, 240);
         btnCopyJourneyTotal.FlatAppearance.BorderSize = 0;
         btnCopyJourneyTotal.FlatStyle = FlatStyle.Flat;
         btnCopyJourneyTotal.Font = new Font("Segoe UI", 9F);
         btnCopyJourneyTotal.ImageAlign = ContentAlignment.MiddleLeft;
-        btnCopyJourneyTotal.Location = new Point(185, 277);
+        btnCopyJourneyTotal.Location = new Point(168, 0);
+        btnCopyJourneyTotal.Margin = new Padding(0);
         btnCopyJourneyTotal.Name = "btnCopyJourneyTotal";
         btnCopyJourneyTotal.Size = new Size(70, 26);
-        btnCopyJourneyTotal.TabIndex = 3;
+        btnCopyJourneyTotal.TabIndex = 1;
         btnCopyJourneyTotal.Text = "Copy";
         btnCopyJourneyTotal.TextImageRelation = TextImageRelation.ImageBeforeText;
         toolTipInput.SetToolTip(btnCopyJourneyTotal, "Copy Journey Total");
@@ -371,7 +386,7 @@ partial class PostcodeDistanceCalculator
         lblStatus.Location = new Point(15, 312);
         lblStatus.Name = "lblStatus";
         lblStatus.Size = new Size(587, 17);
-        lblStatus.TabIndex = 4;
+        lblStatus.TabIndex = 3;
         lblStatus.Text = "Ready for postcodes.";
         //
         // btnReopenHistory
@@ -411,6 +426,7 @@ partial class PostcodeDistanceCalculator
         lstHistory.BorderStyle = BorderStyle.FixedSingle;
         lstHistory.DrawMode = DrawMode.OwnerDrawFixed;
         lstHistory.Font = new Font("Segoe UI", 9F);
+        lstHistory.FormattingEnabled = true;
         lstHistory.IntegralHeight = false;
         lstHistory.ItemHeight = 26;
         lstHistory.Location = new Point(10, 35);
@@ -418,6 +434,7 @@ partial class PostcodeDistanceCalculator
         lstHistory.Size = new Size(305, 431);
         lstHistory.TabIndex = 1;
         lstHistory.DrawItem += LstHistory_DrawItem;
+        lstHistory.Format += LstHistory_Format;
         lstHistory.SelectedIndexChanged += LstHistory_SelectedIndexChanged;
         lstHistory.KeyDown += LstHistory_KeyDown;
         lstHistory.MouseDown += LstHistory_MouseDown;
@@ -473,6 +490,7 @@ partial class PostcodeDistanceCalculator
         //
         // btnToggleHistory
         //
+        btnToggleHistory.AccessibleName = "Close Saved Journeys panel";
         btnToggleHistory.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         btnToggleHistory.BackColor = Color.FromArgb(226, 232, 240);
         btnToggleHistory.FlatAppearance.BorderSize = 0;
@@ -488,7 +506,6 @@ partial class PostcodeDistanceCalculator
         //
         // PostcodeDistanceCalculator
         //
-        AcceptButton = btnCalculate;
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
         BackColor = Color.White;
@@ -508,6 +525,8 @@ partial class PostcodeDistanceCalculator
         splitContainer.ResumeLayout(false);
         splitContainerLeft.Panel1.ResumeLayout(false);
         splitContainerLeft.Panel1.PerformLayout();
+        flowJourneyTotal.ResumeLayout(false);
+        flowJourneyTotal.PerformLayout();
         splitContainerLeft.Panel2.ResumeLayout(false);
         splitContainerLeft.Panel2.PerformLayout();
         ((System.ComponentModel.ISupportInitialize)splitContainerLeft).EndInit();
@@ -538,6 +557,7 @@ partial class PostcodeDistanceCalculator
     private Button btnAddNew;
     private Label lblBreakdownHeader;
     private TextBox txtResults;
+    private FlowLayoutPanel flowJourneyTotal;
     private Label lblJourneyTotal;
     private Button btnCopyJourneyTotal;
     private Label lblStatus;

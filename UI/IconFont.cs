@@ -41,6 +41,9 @@ public static class IconFont
 
     private static readonly PrivateFontCollection Fonts = LoadFonts();
 
+    // Cached: PrivateFontCollection.Families builds new FontFamily objects (GDI+ handles) on every access
+    private static readonly FontFamily Family = Fonts.Families[0];
+
     private static PrivateFontCollection LoadFonts()
     {
         using var stream = typeof(IconFont).Assembly.GetManifestResourceStream(ResourceName)
@@ -61,17 +64,16 @@ public static class IconFont
     /// <summary>Draws <paramref name="icon"/> centred in <paramref name="bounds"/>, sized to fill its shorter side.</summary>
     public static void Draw(Graphics graphics, MaterialIcon icon, Rectangle bounds, Color color)
     {
-        FontFamily family = Fonts.Families[0];
         float size = Math.Min(bounds.Width, bounds.Height);
-        using var font = new Font(family, size, GraphicsUnit.Pixel);
+        using var font = new Font(Family, size, GraphicsUnit.Pixel);
         using var brush = new SolidBrush(color);
 
         // Each Material Symbol is designed on a square grid that is exactly the font's em square, sitting on the
         // baseline. DrawString positions text from the top of the line (the cell ascent), which is taller than the
         // em, so shift up by the difference to put the icon grid exactly on the target square. (A layout rectangle
         // with StringFormat.GenericTypographic draws nothing here: its LineLimit flag drops the over-tall line.)
-        float em = family.GetEmHeight(FontStyle.Regular);
-        float ascentAboveEm = size * (family.GetCellAscent(FontStyle.Regular) - em) / em;
+        float em = Family.GetEmHeight(FontStyle.Regular);
+        float ascentAboveEm = size * (Family.GetCellAscent(FontStyle.Regular) - em) / em;
         float x = bounds.Left + (bounds.Width - size) / 2f;
         float y = bounds.Top + (bounds.Height - size) / 2f - ascentAboveEm;
 
