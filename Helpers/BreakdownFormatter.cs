@@ -6,6 +6,7 @@ namespace PostcodeDistanceCalculator.Helpers;
 /// <summary>
 /// Builds the plain-text "Journey Breakdown" shown in the results box.
 /// A single journey gets a "ROUTE BREAKDOWN" heading; several journeys are numbered and followed by a combined total.
+/// Journeys verified against Google Maps show Google's total, noting the app's own estimate beneath it.
 /// </summary>
 public static class BreakdownFormatter
 {
@@ -38,6 +39,8 @@ public static class BreakdownFormatter
             lines.Add(new string('─', RuleWidth));
             string totalTitle = multiple ? $"JOURNEY {i + 1} TOTAL" : "JOURNEY TOTAL";
             lines.Add($"  {totalTitle}: {unit.FormatNumber(journey.TotalKm)} {longUnit.ToUpperInvariant()}");
+            if (journey.IsVerified)
+                lines.Add($"  (from Google Maps; this app estimated {unit.FormatNumber(journey.EstimatedKm)} {longUnit}, legs above are estimates)");
 
             if (i < journeys.Count - 1)
             {
@@ -53,6 +56,10 @@ public static class BreakdownFormatter
             lines.Add(string.Empty);
             lines.Add(new string('═', RuleWidth));
             lines.Add($"  COMBINED TOTAL ({journeys.Count} JOURNEYS): {unit.FormatNumber(combinedKm)} {longUnit.ToUpperInvariant()}");
+
+            int verified = journeys.Count(j => j.IsVerified);
+            if (verified > 0)
+                lines.Add($"  ({verified} of {journeys.Count} journeys use Google Maps figures)");
         }
 
         return string.Join(Environment.NewLine, lines);

@@ -22,6 +22,7 @@ A lightweight, modern Windows Forms desktop application built with **.NET 10** t
   - [Input Format & Syntax](#input-format--syntax)
   - [Date Tagging](#date-tagging)
   - [History Management](#history-management)
+  - [Verifying Distances with Google Maps](#verifying-distances-with-google-maps)
   - [Clipboard & Quick Actions](#clipboard--quick-actions)
 - [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
@@ -75,6 +76,7 @@ A typical use is adding up all the driving done in a month to claim mileage:
   - Delete a single journey or a whole batch with the inline delete buttons, or **Clear** everything (e.g. at month end).
   - Running grand total across all saved journeys.
   - Collapsible panel with toggle button to maximize screen space.
+- **Google Maps Verification**: Open any journey in Google Maps with one click and enter Google's distance; it replaces the app's estimate in totals, copies and history.
 - **One-Click Clipboard Export**: Click either total label or its **Copy** button to copy just the number (e.g. `123.4`, no label or unit) for spreadsheets or expense forms. A popup confirms exactly what was copied.
 - **Optional Date Tagging**: Optional free-text date field; its placeholder hint shows today's date (`dd/MM`).
 - **Resilient Error Handling & Live Status**: Provides feedback for network timeouts, unrecognized postcodes (HTTP 404), and unroutable coordinates.
@@ -205,11 +207,9 @@ The application communicates with two public REST APIs over HTTPS using a shared
 
 In real-world driving conditions, pure mathematical route distances from OpenStreetMap can slightly underestimate actual vehicle odometer readings and commercial navigation apps (such as Google Maps) due to junction turning arcs, multi-lane routing, and local road alterations.
 
-To provide practical, realistic mileage figures, the application applies a **+7% multiplier (`* 1.07`)** to raw OSRM meter distances:
+To provide practical, realistic mileage figures, the application applies a **+7% multiplier** (`RouteApi.CalibrationFactor = 1.07`) to raw OSRM distances.
 
-```csharp
-double meters = await GetDrivingDistanceMetersAsync(coords[start], coords[end]) * 1.07;
-```
+This is an estimate. Google Maps can differ, by more on some trips than others: it picks routes using live traffic, uses its own map data, and may start from a full address rather than the postcode's centre. A single percentage also can't fit short local trips and long motorway trips equally well. When a figure needs to match Google exactly (e.g. for a mileage claim), use [Verifying Distances with Google Maps](#verifying-distances-with-google-maps).
 
 ---
 
@@ -252,6 +252,19 @@ Postcodes can also be entered one per line instead of comma-separated.
 - **Clear**: Click **Clear** at the top of the panel to delete all history after confirming, e.g. once a month's total has been copied.
 - **Collapse / Expand Sidebar**: Click the chevron button at the top right of the panel to collapse it for a wider breakdown view; click **History** to bring it back.
 
+### Verifying Distances with Google Maps
+
+The app's distances are estimates from OpenStreetMap routing. To check a journey against Google Maps, or to use Google's figure instead:
+
+1. **For the current results**, click **Verify** next to **Copy**. **For saved history**, right-click a journey (or a batch header, to go through all its journeys) and choose **Verify with Google Maps...**.
+2. Google Maps opens in your browser with the journey's postcodes filled in as driving directions (no account or API key needed).
+3. A small window asks for the distance Google shows. Type or paste it (e.g. `210.4` or `210.4 mi`) in the unit the app is showing, then **Save**. **Skip** leaves that journey as it is; **Stop** ends verification.
+4. The Google figure replaces the app's estimate for that journey's total, the batch and history totals, and copied numbers. The breakdown shows the Google figure with the app's estimate beneath it, and history rows are marked "Google Maps".
+
+To go back to the estimate, right-click the journey or batch and choose **Use This App's Estimate**. **Open in Google Maps** on a saved journey just opens the route without asking for a figure.
+
+Google Maps links support up to 11 stops (9 between the start and the end). Leg distances in the breakdown are always the app's estimates; only the journey total is replaced.
+
 ### Clipboard & Quick Actions
 
 - **Copy Journey Total**: Click either the `Journey Total: ...` label directly or its adjacent **Copy** button.
@@ -281,7 +294,8 @@ PostcodeDistanceCalculator/
 │   ├── PostcodeDistanceCalculator.cs          # Main form: wires the classes below to the UI, history list drawing & clicks
 │   ├── PostcodeDistanceCalculator.Designer.cs # Windows Forms layout, controls, and event wiring
 │   ├── PostcodeDistanceCalculator.resx        # Form XML resource definitions
-│   └── IconFont.cs                            # Draws Material Symbols icons from the embedded font
+│   ├── IconFont.cs                            # Draws Material Symbols icons from the embedded font
+│   └── VerifyDistanceDialog.cs                # Asks for Google's distance while Google Maps is open
 ├── Models/
 │   ├── Leg.cs                                 # One driving leg between two postcodes
 │   ├── Journey.cs                             # A route of legs; totals derived from the legs
@@ -292,6 +306,8 @@ PostcodeDistanceCalculator/
 │   └── DistanceUnitExtensions.cs              # Unit conversion, names and number formatting
 ├── Helpers/
 │   ├── JourneyParser.cs                       # Splits input text into journeys and normalised postcodes
+│   ├── GoogleMapsLink.cs                      # Builds Google Maps directions links for verifying journeys
+│   ├── DistanceInput.cs                       # Reads distances typed or pasted from Google Maps
 │   └── BreakdownFormatter.cs                  # Builds the plain-text Journey Breakdown
 ├── Services/
 │   ├── RouteApi.cs                            # Bulk postcode lookup and per-journey OSRM routing, calibration factor
