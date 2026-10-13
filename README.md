@@ -100,13 +100,13 @@ A typical use is adding up all the driving done in a month to claim mileage:
                            v
 +------------------------------------------------------+
 |           Coordinate Resolver (postcodes.io)          |
-|             GET /postcodes/{postcode}                |
+|     POST /postcodes (all postcodes in one call)      |
 +--------------------------+---------------------------+
                            |
                            v
 +------------------------------------------------------+
 |          Routing Engine (Project OSRM)               |
-|      GET /route/v1/driving/{lon},{lat};...           |
+|  GET /route/v1/driving/{stop};{stop};... per journey |
 +--------------------------+---------------------------+
                            |
                            v
@@ -129,13 +129,14 @@ A typical use is adding up all the driving done in a month to claim mileage:
    - Each journey is split by commas (`,`), stripped of internal whitespace, and capitalized (e.g., `sw1a 1aa` becomes `SW1A1AA`).
    - Journeys with fewer than 2 postcodes are skipped.
 
-2. **Deduplicated Geocoding**:
-   - All unique postcodes across the journey are identified.
-   - Coordinates are looked up one postcode at a time (each request is awaited, so the window stays responsive) and cached for the whole batch, so a postcode that appears in several journeys is only fetched once.
+2. **Batched Geocoding**:
+   - Every unique postcode across all journeys in the batch is collected.
+   - They are looked up together in one bulk postcodes.io request (up to 100 per request), so a postcode that appears in several journeys is only fetched once.
+   - Postcodes that aren't found are retried against postcodes.io's list of retired postcodes; if found there, their last known location is used and the user is told.
 
-3. **Sequential Leg Routing**:
-   - The app loops through postcodes `0` to `N - 1`, pairing adjacent postcodes (`postcodes[i]` $\to$ `postcodes[i + 1]`).
-   - Each leg is sent to OSRM to determine the driving distance in meters.
+3. **One Routing Request per Journey**:
+   - All of a journey's stops are sent to OSRM in a single request, which returns the driving distance for every leg (`postcodes[i]` to `postcodes[i + 1]`).
+   - This gives exactly the same leg distances as routing each leg separately, with far fewer requests.
 
 4. **Formatting & Display**:
    - Legs are formatted into a structured ASCII/Unicode breakdown table showing leg numbers, start/end postcodes, individual leg distances, and overall totals.
@@ -145,54 +146,56 @@ A typical use is adding up all the driving done in a month to claim mileage:
 
 ## External API Integrations
 
-The application communicates with two public REST APIs using a shared `HttpClient` instance (15 second timeout). Requests are made one at a time and awaited, so the window stays responsive while they run.
+The application communicates with two public REST APIs over HTTPS using a shared `HttpClient` instance (15 second timeout, `User-Agent: WinFormsPostcodeDistanceTool` on every request). Requests are awaited, so the window stays responsive while they run. A batch needs one postcode lookup plus one routing request per journey.
 
 ### 1. Geocoding via postcodes.io
 
-- **Endpoint**: `https://api.postcodes.io/postcodes/{postcode}`
-- **Method**: `GET`
-- **Purpose**: Retrieves WGS84 geographic coordinates (latitude and longitude) for UK postcodes.
-- **Response Format**: JSON containing a `result` object with `latitude` and `longitude` numeric fields.
+- **Endpoint**: `https://api.postcodes.io/postcodes` (bulk lookup)
+- **Method**: `POST` with `{"postcodes": ["SW1A1AA", "M11AE", ...]}`, up to 100 postcodes per request
+- **Purpose**: Retrieves WGS84 latitude and longitude for every postcode in the batch at once.
+- **Response Format**: One entry per postcode with the original `query` and a `result` that is either the postcode's details or `null` if it isn't a current postcode.
+- **Retired postcodes**: Postcodes with a `null` result are retried at `GET https://api.postcodes.io/terminated_postcodes/{postcode}`, which still gives a last known location and the year it was retired.
 - **Error Handling**:
-  - **404 Not Found**: Specifically caught and displayed to the user as `'{postcode}' is not a recognized UK postcode.`
-  - **Network Issues & Timeouts**: `HttpRequestException` and `TaskCanceledException` are caught with informative messages.
-  - **JSON Parsing**: Uses `System.Text.Json.JsonDocument` with validation on the `result` property.
+  - All unknown postcodes are reported together in one message, rather than stopping at the first.
+  - Valid postcodes with no map location (e.g. PO boxes) are reported as unroutable.
+  - Network errors, timeouts, HTTP errors and malformed responses become a readable error message.
 
 ```csharp
 // Example request:
-// GET https://api.postcodes.io/postcodes/SW1A1AA
+// POST https://api.postcodes.io/postcodes   {"postcodes":["SW1A1AA","ZZ99ZZ"]}
 {
   "status": 200,
-  "result": {
-    "postcode": "SW1A 1AA",
-    "latitude": 51.501009,
-    "longitude": -0.141588
-  }
+  "result": [
+    { "query": "SW1A1AA", "result": { "postcode": "SW1A 1AA", "latitude": 51.50101, "longitude": -0.141563 } },
+    { "query": "ZZ99ZZ", "result": null }
+  ]
 }
 ```
 
 ### 2. Driving Route Calculation via Project OSRM
 
-- **Endpoint**: `http://router.project-osrm.org/route/v1/driving/{startLon},{startLat};{endLon},{endLat}?overview=false`
-- **Method**: `GET`
-- **Purpose**: Computes the optimal driving distance between two coordinates based on OpenStreetMap road network data.
-- **Request Headers**: A custom `User-Agent: WinFormsPostcodeDistanceTool` header identifies the app, as the OSRM usage policy asks.
-- **Usage limits**: `router.project-osrm.org` is OSRM's public demo server. Its [usage policy](https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server) allows at most one request per second and it isn't meant for production use, so heavy use may be rate-limited or blocked. The app waits at least one second between routing requests to stay within the limit, so a batch takes roughly a second per leg. That's fine for personal mileage tracking; anything larger should run its own OSRM server.
-- **Formatting**: Coordinates are explicitly formatted using `CultureInfo.InvariantCulture` (`startLon.ToString(CultureInfo.InvariantCulture)`) to ensure periods (`.`) are used as decimal points regardless of the user's Windows locale.
-- **Response Format**: JSON containing `routes[0].distance` in meters and a `code` string (`"Ok"`, `"NoRoute"`, etc.).
+- **Endpoint**: `https://router.project-osrm.org/route/v1/driving/{lon},{lat};{lon},{lat};...?overview=false`
+- **Method**: `GET`, one request per journey with every stop in order
+- **Purpose**: Computes the fastest driving route through the stops on OpenStreetMap road data, with the distance of each leg.
+- **Usage limits**: `router.project-osrm.org` is OSRM's public demo server. Its [usage policy](https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server) allows at most one request per second and it isn't meant for production use, so heavy use may be rate-limited or blocked. The app waits at least one second between routing requests to stay within the limit, so a batch takes roughly a second per journey. That's fine for personal mileage tracking; anything larger should run its own OSRM server.
+- **Formatting**: Coordinates are formatted with `CultureInfo.InvariantCulture` so decimal points are always `.`, whatever the Windows locale.
+- **Response Format**: JSON with a `code` (`"Ok"`, `"NoRoute"`, ...) and `routes[0].legs[i].distance` in metres for each leg.
 - **Error Handling**:
-  - Checks if the response code is `"NoRoute"` and alerts the user that no drivable route exists between those points.
-  - Verifies presence and valid array structure of `routes`.
+  - `"NoRoute"` is reported as no drivable route between the postcodes.
+  - The number of legs returned is checked against the number of stops.
 
 ```csharp
 // Example request:
-// GET http://router.project-osrm.org/route/v1/driving/-0.141588,51.501009;-2.242631,53.480759?overview=false
+// GET https://router.project-osrm.org/route/v1/driving/-0.141563,51.50101;-2.231182,53.483487;-3.193018,55.950328?overview=false
 {
   "code": "Ok",
   "routes": [
     {
-      "distance": 331450.2,
-      "duration": 14210.5
+      "distance": 664358.8,
+      "legs": [
+        { "distance": 320453.1, "duration": 14664.2 },
+        { "distance": 343905.7, "duration": 15744.6 }
+      ]
     }
   ]
 }
@@ -283,14 +286,17 @@ PostcodeDistanceCalculator/
 │   ├── Leg.cs                                 # One driving leg between two postcodes
 │   ├── Journey.cs                             # A route of legs; totals derived from the legs
 │   ├── JourneyBatch.cs                        # Journeys saved together, stamped with when they were calculated
-│   └── DistanceUnit.cs                        # Miles / kilometers enum
+│   ├── DistanceUnit.cs                        # Miles / kilometers enum
+│   └── PostcodeLocation.cs                    # Latitude/longitude from postcodes.io (flags retired postcodes)
 ├── Extensions/
 │   └── DistanceUnitExtensions.cs              # Unit conversion, names and number formatting
 ├── Helpers/
 │   ├── JourneyParser.cs                       # Splits input text into journeys and normalised postcodes
 │   └── BreakdownFormatter.cs                  # Builds the plain-text Journey Breakdown
 ├── Services/
-│   ├── RouteApi.cs                            # postcodes.io and OSRM calls, calibration factor
+│   ├── RouteApi.cs                            # Bulk postcode lookup and per-journey OSRM routing, calibration factor
+│   ├── RouteLookupException.cs                # Expected lookup/routing failures with user-readable messages
+│   ├── RequestThrottle.cs                     # Keeps OSRM requests at least a second apart
 │   └── HistoryStore.cs                        # Loads/saves history.json next to the executable
 ├── Resources/
 │   ├── MaterialSymbolsOutlined.ttf            # Icon font subset from fonts.google.com/icons, embedded in the exe

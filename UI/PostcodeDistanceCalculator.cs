@@ -214,7 +214,7 @@ public partial class PostcodeDistanceCalculator : Form
         splitContainerLeft.Panel1.Enabled = false;
         splitContainer.Panel2.Enabled = false;
         btnAddNew.Enabled = false;
-        lblStatus.Text = "Fetching coordinates...";
+        lblStatus.Text = "Looking up postcodes...";
         ShowJourneys([], savable: null);
 
         try
@@ -224,29 +224,22 @@ public partial class PostcodeDistanceCalculator : Form
 
             // Built locally and only shown on full success, so a failure can't leave a partial batch
             var journeys = new List<Journey>();
-            var coords = new Dictionary<string, (double Lat, double Lon)>();
+
+            // Every postcode in the batch in one lookup, then one routing request per journey
+            var locations = await RouteApi.GetLocationsAsync(parsed.Routes.SelectMany(r => r.Postcodes));
 
             foreach (var route in parsed.Routes)
             {
-                int journeyNum = journeys.Count + 1;
+                lblStatus.Text = parsed.Routes.Count > 1
+                    ? $"Routing journey {journeys.Count + 1} of {parsed.Routes.Count}..."
+                    : "Routing...";
 
-                foreach (var code in route.Postcodes.Where(c => !coords.ContainsKey(c)).Distinct())
-                {
-                    lblStatus.Text = $"Locating {code}...";
-                    coords[code] = await RouteApi.GetCoordinatesAsync(code);
-                }
+                var stops = route.Postcodes.Select(p => locations[p]).ToList();
+                var legMeters = await RouteApi.GetLegDistancesMetersAsync(stops);
 
-                var legs = new List<Leg>();
-                for (int i = 0; i < route.Postcodes.Count - 1; i++)
-                {
-                    string start = route.Postcodes[i];
-                    string end = route.Postcodes[i + 1];
-
-                    lblStatus.Text = $"Journey {journeyNum}: Routing {start} -> {end}...";
-                    double meters = await RouteApi.GetDrivingDistanceMetersAsync(coords[start], coords[end]) * RouteApi.CalibrationFactor;
-                    legs.Add(new Leg(start, end, meters));
-                }
-
+                var legs = legMeters
+                    .Select((meters, i) => new Leg(route.Postcodes[i], route.Postcodes[i + 1], meters * RouteApi.CalibrationFactor))
+                    .ToList();
                 journeys.Add(new Journey(dateTag, route.RawInput, legs));
             }
 
@@ -262,11 +255,28 @@ public partial class PostcodeDistanceCalculator : Form
                     "These routes were skipped because they have fewer than two postcodes:\n\n" + string.Join("\n", parsed.Skipped.Select(s => $"• {s}")),
                     "Some Routes Skipped", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+
+            // Retired postcodes still route from their last known location, but say so
+            var terminated = locations.Where(l => l.Value.IsTerminated).ToList();
+            if (terminated.Count > 0)
+            {
+                MessageBox.Show(
+                    "These postcodes are no longer in use, so their last known location was used:\n\n" +
+                    string.Join("\n", terminated.Select(t => t.Value.YearTerminated is int year ? $"• {t.Key} (retired {year})" : $"• {t.Key}")),
+                    "Retired Postcodes", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        catch (RouteLookupException ex)
+        {
+            // Expected problems: unknown postcode, no route, network or service errors
+            MessageBox.Show(ex.Message, "Calculation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            lblStatus.Text = $"Failed. {ex.Message.ReplaceLineEndings(" ")}";
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error: {ex.Message}", "Calculation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            lblStatus.Text = $"Failed. {ex.Message}";
+            // Anything else is a bug: say so plainly and include the details rather than passing it off as a lookup failure
+            MessageBox.Show($"Something unexpected went wrong. Please report this:\n\n{ex}", "Unexpected Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            lblStatus.Text = $"Unexpected error: {ex.GetType().Name}.";
         }
         finally
         {
