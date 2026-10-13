@@ -157,7 +157,7 @@ public partial class PostcodeDistanceCalculator : Form
             if (skipped.Count > 0)
             {
                 MessageBox.Show(
-                    "These routes were skipped because they have fewer than two postcodes:\n\n" + string.Join("\n", skipped.Select(s => $"• {s}")),
+                    "These routes were skipped because they have fewer than two postcodes:\n\n" + string.Join("\n", skipped.Select(s => $"• {string.Join(", ", s.Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))}")),
                     "Some Routes Skipped", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -267,32 +267,36 @@ public partial class PostcodeDistanceCalculator : Form
 
     private void LstHistory_SelectedIndexChanged(object sender, EventArgs e)
     {
-        // The ListBox selects on mouse down before MouseDown fires, so a click on ✕ would load the row
-        // (clobbering the user's input) just before deleting it. Skip the load when the ✕ was hit.
-        if (lstHistory.SelectedIndex != -1 && DeleteButtonHitIndex(lstHistory.PointToClient(Cursor.Position)) == lstHistory.SelectedIndex)
-            return;
+        // The ListBox selects on mouse down before MouseDown fires, so a click on the delete button would load
+        // the row (clobbering the user's input) just before deleting it. Mouse selections are handled in
+        // LstHistory_MouseDown instead; only keyboard selections load from here.
+        if (Control.MouseButtons != MouseButtons.None) return;
 
         if (lstHistory.SelectedItem is JourneyHistoryItem item)
-        {
-            txtPostcodes.Text = item.RawInput;
-            txtDate.Text = item.DateStr; // Restores empty string if history item had no date
+            LoadHistoryItem(item);
+    }
 
-            currentJourneys = [
-                new ProcessedJourney
-                {
-                    Index = 1,
-                    DateStr = item.DateStr,
-                    RawInput = item.RawInput,
-                    FirstCode = item.DisplayText.Replace("...", ""),
-                    Legs = [.. item.Legs],
-                    TotalKm = item.TotalKm
-                }
-            ];
+    private void LoadHistoryItem(JourneyHistoryItem item)
+    {
+        txtPostcodes.Text = item.RawInput;
+        txtDate.Text = item.DateStr; // Restores empty string if history item had no date
 
-            // Save stays disabled (setting txtPostcodes.Text above disabled it): this entry is already in history
-            RenderResults();
-            lblStatus.Text = "Loaded entry from history.";
-        }
+        currentJourneys = [
+            new ProcessedJourney
+            {
+                Index = 1,
+                DateStr = item.DateStr,
+                RawInput = item.RawInput,
+                FirstCode = item.DisplayText.Replace("...", ""),
+                Legs = [.. item.Legs],
+                TotalKm = item.TotalKm
+            }
+        ];
+
+        RenderResults();
+        // Set explicitly: TextChanged doesn't fire if the input already matched, and this entry is already in history
+        btnAddNew.Enabled = false;
+        lblStatus.Text = "Loaded entry from history.";
     }
 
     private void BtnAddNew_Click(object sender, EventArgs e)
@@ -382,6 +386,9 @@ public partial class PostcodeDistanceCalculator : Form
 
     private void LstHistory_MouseDown(object sender, MouseEventArgs e)
     {
+        // Left single-clicks only: the second press of a double-click would otherwise delete the row that moved up under the cursor
+        if (e.Button != MouseButtons.Left || e.Clicks > 1) return;
+
         int index = DeleteButtonHitIndex(e.Location);
         if (index != -1)
         {
@@ -389,9 +396,14 @@ public partial class PostcodeDistanceCalculator : Form
             RecalculateOverallTotal();
             lblStatus.Text = "Removed entry from history.";
         }
+        else if (lstHistory.IndexFromPoint(e.Location) == lstHistory.SelectedIndex && lstHistory.SelectedItem is JourneyHistoryItem item)
+        {
+            // Index check: clicking empty space below the rows must not reload the still-selected row
+            LoadHistoryItem(item);
+        }
     }
 
-    /// <summary>Index of the history row whose ✕ is at <paramref name="location"/>, or -1.</summary>
+    /// <summary>Index of the history row whose delete button is at <paramref name="location"/>, or -1.</summary>
     private int DeleteButtonHitIndex(Point location)
     {
         int index = lstHistory.IndexFromPoint(location);
