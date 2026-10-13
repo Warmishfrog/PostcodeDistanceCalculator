@@ -8,6 +8,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- The test project lives in a subfolder; keep its files out of the app -->
     <DefaultItemExcludes>$(DefaultItemExcludes);PostcodeDistanceCalculator.Tests\**</DefaultItemExcludes>
+    <!-- Per-monitor DPI awareness so the UI and icons stay sharp at 125%/150%/200% and when moved between monitors -->
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Material Symbols icon subset from fonts.google.com/icons, embedded so icons work offline (see UI/IconFont.cs) -->
+    <EmbeddedResource Include="Resources\MaterialSymbolsOutlined.ttf" LogicalName="MaterialSymbolsOutlined.ttf" />
+  </ItemGroup>
 
 </Project>
