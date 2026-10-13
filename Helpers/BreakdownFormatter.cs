@@ -1,0 +1,60 @@
+using PostcodeDistanceCalculator.Extensions;
+using PostcodeDistanceCalculator.Models;
+
+namespace PostcodeDistanceCalculator.Helpers;
+
+/// <summary>
+/// Builds the plain-text "Journey Breakdown" shown in the results box.
+/// A single journey gets a "ROUTE BREAKDOWN" heading; several journeys are numbered and followed by a combined total.
+/// </summary>
+public static class BreakdownFormatter
+{
+    private const int RuleWidth = 45;
+
+    /// <summary>Formats <paramref name="journeys"/> in <paramref name="unit"/>. Returns an empty string for no journeys.</summary>
+    public static string Format(IReadOnlyList<Journey> journeys, DistanceUnit unit)
+    {
+        if (journeys.Count == 0) return string.Empty;
+
+        bool multiple = journeys.Count > 1;
+        string longUnit = unit.LongName();
+        var lines = new List<string>();
+
+        for (int i = 0; i < journeys.Count; i++)
+        {
+            var journey = journeys[i];
+
+            string date = string.IsNullOrWhiteSpace(journey.DateTag) ? "" : $" [{journey.DateTag}]";
+            lines.Add(multiple ? $"JOURNEY {i + 1}{date}" : $"ROUTE BREAKDOWN{date}");
+            lines.Add(new string('─', RuleWidth));
+
+            for (int legIndex = 0; legIndex < journey.Legs.Count; legIndex++)
+            {
+                var leg = journey.Legs[legIndex];
+                lines.Add($"  Leg {legIndex + 1}:  {leg.Start}  ->  {leg.End}");
+                lines.Add($"         Distance: {unit.FormatNumber(leg.Meters / 1000.0)} {longUnit}");
+            }
+
+            lines.Add(new string('─', RuleWidth));
+            string totalTitle = multiple ? $"JOURNEY {i + 1} TOTAL" : "JOURNEY TOTAL";
+            lines.Add($"  {totalTitle}: {unit.FormatNumber(journey.TotalKm)} {longUnit.ToUpperInvariant()}");
+
+            if (i < journeys.Count - 1)
+            {
+                lines.Add(string.Empty);
+                lines.Add(new string('═', RuleWidth));
+                lines.Add(string.Empty);
+            }
+        }
+
+        if (multiple)
+        {
+            double combinedKm = journeys.Sum(j => j.TotalKm);
+            lines.Add(string.Empty);
+            lines.Add(new string('═', RuleWidth));
+            lines.Add($"  COMBINED TOTAL ({journeys.Count} JOURNEYS): {unit.FormatNumber(combinedKm)} {longUnit.ToUpperInvariant()}");
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+}

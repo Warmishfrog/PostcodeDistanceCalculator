@@ -1,6 +1,6 @@
 # UK Postcode Distance Calculator
 
-A lightweight, modern Windows Forms desktop application built with **.NET 10** to calculate driving distances between UK postcodes. The tool supports multi-stop routes, batch processing of multiple independent journeys, live unit conversion (miles / kilometers), interactive route breakdowns, and session history management with one-click clipboard copying.
+A lightweight, modern Windows Forms desktop application built with **.NET 10** to calculate driving distances between UK postcodes. The tool supports multi-stop routes, batch processing of multiple independent journeys, live unit conversion (miles / kilometers), interactive route breakdowns, saved history grouped into dated batches, and one-click clipboard copying. It is a portable app: history is saved next to the executable.
 
 <img width="944" height="603" alt="UkPostcodeDistanceCalculator" src="https://github.com/user-attachments/assets/af25fc1f-2530-455d-bef3-2aae538715de" />
 
@@ -9,6 +9,7 @@ A lightweight, modern Windows Forms desktop application built with **.NET 10** t
 ## Table of Contents
 
 - [Overview](#overview)
+- [Example Use Case: Monthly Mileage](#example-use-case-monthly-mileage)
 - [Key Features](#key-features)
 - [How It Works](#how-it-works)
   - [Architecture Workflow](#architecture-workflow)
@@ -29,6 +30,7 @@ A lightweight, modern Windows Forms desktop application built with **.NET 10** t
   - [Single-File Self-Contained Executable](#single-file-self-contained-executable)
   - [Publish Parameter Breakdown](#publish-parameter-breakdown)
 - [Dependencies & Attribution](#dependencies--attribution)
+- [Disclaimer](#disclaimer)
 - [License](#license)
 
 ---
@@ -41,7 +43,23 @@ Calculating driving distances across sequences of UK postcodes is a common requi
 1. Translates arbitrary UK postcodes into precise geographical coordinates using the free [postcodes.io](https://postcodes.io/) REST API.
 2. Calculates real driving routes between consecutive waypoints using the [Project OSRM](https://project-osrm.org/) routing engine.
 3. Automatically adjusts raw routing distances with a calibrated multiplier to closely reflect real-world navigation systems (e.g. Google Maps).
-4. Maintains an active session history sidebar allowing users to compare routes, track cumulative distances, and export totals to the clipboard.
+4. Maintains a saved history sidebar allowing users to compare routes, track cumulative distances, and export totals to the clipboard.
+
+---
+
+## Example Use Case: Monthly Mileage
+
+A typical use is adding up all the driving done in a month to claim mileage:
+
+1. After a few days of driving, enter each trip as its own journey in one batch, separated by semicolons:
+   ```text
+   SW1A 1AA, M1 1AE, SW1A 1AA ; SW1A 1AA, B1 1AA ; B1 1AA, LS1 1UR, SW1A 1AA
+   ```
+   Optionally put a date in the **Date** box (e.g. `14/10`) to tag the journeys with the day they happened.
+2. Click **Calculate Route**, check the breakdown, then click **+ Save to History**. The batch is saved with today's date and time, so even undated journeys can be traced back to when they were entered.
+3. Repeat through the month. History is kept in `history.json` next to the app, so it survives closing and reopening.
+4. At month end, click **Copy** next to **History Total** to copy the month's total mileage (just the number, e.g. `412.6`) and paste it into the expense form or spreadsheet.
+5. Click **Clear** in the history panel to start the next month fresh.
 
 ---
 
@@ -50,14 +68,15 @@ Calculating driving distances across sequences of UK postcodes is a common requi
 - **Multi-Leg Route Calculation**: Enter 2 or more UK postcodes to compute cumulative driving distance leg-by-leg.
 - **Batch Journey Processing**: Separate multiple independent journeys using semicolons (`;`) to calculate them all in a single operation.
 - **Dynamic Unit Switching**: Instantly switch between **Miles** and **Kilometers (km)** with automatic, live conversion of current results and saved history without re-querying the APIs.
-- **Collapsible Saved Journeys Sidebar**:
-  - Save completed calculations to the session history list.
-  - Owner-drawn list items showing custom date tags, initial postcode, and total distance.
-  - Individual item removal with inline delete buttons (`✕`).
+- **Saved History, Grouped by Batch**:
+  - Each save becomes a batch, automatically stamped with the date and time it was calculated.
+  - Batches show as shaded headers with their journey count and total; their journeys are listed underneath.
+  - History is saved to `history.json` next to the executable (portable, no AppData), so it persists between sessions and moves with the app folder.
+  - Delete a single journey or a whole batch with the inline delete buttons, or **Clear** everything (e.g. at month end).
   - Running grand total across all saved journeys.
   - Collapsible panel with toggle button to maximize screen space.
-- **One-Click Clipboard Export**: Click either total label or dedicated `📋 Copy` buttons to copy figures for spreadsheets or expense forms.
-- **Date Tagging with Win32 Cue Banner**: Optional date field equipped with native Windows gray placeholder hint (`dd/MM`).
+- **One-Click Clipboard Export**: Click either total label or its **Copy** button to copy just the number (e.g. `123.4`, no label or unit) for spreadsheets or expense forms. A popup confirms exactly what was copied.
+- **Optional Date Tagging**: Optional free-text date field; its placeholder hint shows today's date (`dd/MM`).
 - **Resilient Error Handling & Live Status**: Provides feedback for network timeouts, unrecognized postcodes (HTTP 404), and unroutable coordinates.
 
 ---
@@ -208,26 +227,32 @@ SW1A 1AA, M1 1AE ; B1 1AA, LS1 1UR ; CB2 1TN, NR1 1ER
 ```
 - Each journey section is calculated independently.
 - The **Journey Breakdown** panel outputs individual route breakdowns followed by a combined summary.
-- Clicking `+ Save to History` saves all batch journeys as separate entries in the History panel.
+- Clicking `+ Save to History` saves the journeys together as one dated batch in the History panel.
+
+Postcodes can also be entered one per line instead of comma-separated.
 
 ### Date Tagging
 
 - Located next to the postcode input box.
-- **Optional**: Can be left blank, or populated with any string (e.g., `24/09`, `2026-09-24`, `Trip 1`).
-- The text box displays a native Windows gray placeholder (cue banner) indicating today's date (`dd/MM`).
+- **Optional**: Can be left blank, or populated with any string (e.g., `24/09`, `2026-09-24`, `Trip 1`). Useful when tracking which day each journey happened.
+- The placeholder hint shows today's date (`dd/MM`) as a guide to the format.
 - When provided, date tags are prefixed to journey headers (`[24/09]`) and shown alongside history items.
+- Separately, every saved batch is always stamped with the date and time it was calculated. This isn't optional, so saved history can always be dated.
 
 ### History Management
 
-- **Save to History**: After calculating a route, click `+ Save to History`. The input fields will clear, and the calculated routes will appear in the **Saved Journeys** sidebar.
-- **Recall Journey**: Click any saved journey row to restore its postcodes, date, and full breakdown in the main panel.
-- **Delete Entry**: Click the red **✕** icon on any history item to remove it. The **History Total** automatically recalculates.
+- **Save to History**: After calculating, click `+ Save to History`. The input fields clear and the journeys appear in the **Saved Journeys** sidebar as one batch, headed by its date and time, journey count and total.
+- **Persistence**: History is written to `history.json` in the same folder as the executable after every change. Keep the app in a folder you can write to (not `Program Files`); if saving fails, the app says so and keeps history until it closes. If the file is ever unreadable, it is renamed to `history.corrupt-<timestamp>.json` rather than overwritten.
+- **Recall**: Click a batch header to load all its journeys into the breakdown, or click a single journey to load just that one.
+- **Delete**: Click the red cross on a journey to remove it, or on a batch header to remove the whole batch (asks first if it holds several journeys). The **History Total** recalculates automatically.
+- **Clear**: Click **Clear** at the top of the panel to delete all history after confirming, e.g. once a month's total has been copied.
 - **Collapse / Expand Sidebar**: Click `▶` to collapse the history pane for a wider breakdown view; click `📜 History ◀` to bring it back.
 
 ### Clipboard & Quick Actions
 
-- **Copy Journey Total**: Click either the `Journey Total: ...` label directly or its adjacent `📋 Copy` button.
-- **Copy History Total**: Click the `History Total: ...` label directly or its adjacent `📋 Copy` button.
+- **Copy Journey Total**: Click either the `Journey Total: ...` label directly or its adjacent **Copy** button.
+- **Copy History Total**: Click the `History Total: ...` label directly or its adjacent **Copy** button.
+- Only the number is copied (e.g. `123.4`, in the currently selected unit), so it pastes straight into a spreadsheet cell. A popup above the button and the status bar show exactly what was copied.
 - **Help Dialog**: Click the top-right `❓ Help` button to view quick syntax instructions.
 
 ---
@@ -237,14 +262,31 @@ SW1A 1AA, M1 1AE ; B1 1AA, LS1 1UR ; CB2 1TN, NR1 1ER
 ```text
 PostcodeDistanceCalculator/
 │
-├── PostcodeDistanceCalculator.cs          # Main form logic, async API calls, history & state handling
-├── PostcodeDistanceCalculator.Designer.cs # Windows Forms layout, controls, and event wiring
-├── PostcodeDistanceCalculator.resx        # Form XML resource definitions
+├── UI/
+│   ├── PostcodeDistanceCalculator.cs          # Main form: wires the classes below to the UI, history list drawing & clicks
+│   ├── PostcodeDistanceCalculator.Designer.cs # Windows Forms layout, controls, and event wiring
+│   └── PostcodeDistanceCalculator.resx        # Form XML resource definitions
+├── Models/
+│   ├── Leg.cs                                 # One driving leg between two postcodes
+│   ├── Journey.cs                             # A route of legs; totals derived from the legs
+│   ├── JourneyBatch.cs                        # Journeys saved together, stamped with when they were calculated
+│   └── DistanceUnit.cs                        # Miles / kilometers enum
+├── Extensions/
+│   └── DistanceUnitExtensions.cs              # Unit conversion, names and number formatting
+├── Helpers/
+│   ├── JourneyParser.cs                       # Splits input text into journeys and normalised postcodes
+│   └── BreakdownFormatter.cs                  # Builds the plain-text Journey Breakdown
+├── Services/
+│   ├── RouteApi.cs                            # postcodes.io and OSRM calls, calibration factor
+│   └── HistoryStore.cs                        # Loads/saves history.json next to the executable
 ├── Program.cs                             # Application entry point with DPI awareness initialization
 ├── PostcodeDistanceCalculator.csproj      # .NET 10 project file (WinExe, Nullable, Windows Forms enabled)
-├── PostcodeDistanceCalculator.slnx        # Modern XML solution file (.NET 10 / Visual Studio 2026)
+├── PostcodeDistanceCalculator.slnx        # Solution file containing the app and test projects
+├── PostcodeDistanceCalculator.Tests/      # xUnit tests for the parser, formatter, models and history store
 └── README.md                              # Project documentation (this file)
 ```
+
+Each class has XML doc comments describing its role and behaviour.
 
 ---
 
@@ -264,12 +306,17 @@ PostcodeDistanceCalculator/
 To build and run the application locally from the command line:
 
 ```powershell
-# Restore dependencies and build
+# Restore dependencies and build the app and tests
 dotnet build
 
 # Run the Windows Forms application
-dotnet run
+dotnet run --project PostcodeDistanceCalculator.csproj
+
+# Run the unit tests
+dotnet test
 ```
+
+The tests cover input parsing, breakdown formatting, unit conversion and history saving/loading. They don't call the live APIs.
 
 Or open `PostcodeDistanceCalculator.slnx` in Visual Studio 2026 / Visual Studio Code and press `F5`.
 
@@ -280,7 +327,7 @@ Or open `PostcodeDistanceCalculator.slnx` in Visual Studio 2026 / Visual Studio 
 To generate a standalone, portable Windows `.exe` that runs on any 64-bit Windows PC without requiring .NET 10 to be installed, execute the following command in the project root:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
+dotnet publish PostcodeDistanceCalculator.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 ```
 
 #### Output Location
@@ -309,6 +356,13 @@ bin/Release/net10.0-windows/win-x64/publish/PostcodeDistanceCalculator.exe
 - **Geocoding**: Powered by [postcodes.io](https://postcodes.io/) (Open-source UK postcode and geodemographic data API based on Ordnance Survey Open Data, Royal Mail PAF, and ONS).
 - **Routing Engine**: Powered by [Project OSRM](https://project-osrm.org/) (Open Source Routing Machine).
 - **Map Data**: [OpenStreetMap](https://www.openstreetmap.org/) contributors under the Open Database License (ODbL).
+
+---
+
+## Disclaimer
+
+This project was built with the assistance of [Claude Code](https://claude.com/claude-code), Anthropic's AI coding tool.
+However, all decisions and designs are reviewed and implemented by the author. The AI is used only as a coding assistant not a final say.
 
 ---
 

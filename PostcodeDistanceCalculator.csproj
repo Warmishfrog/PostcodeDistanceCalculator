@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The test project lives in a subfolder; keep its files out of the app -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);PostcodeDistanceCalculator.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
 </Project>
