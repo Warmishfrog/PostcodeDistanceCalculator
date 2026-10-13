@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using PostcodeDistanceCalculator.Extensions;
@@ -28,6 +30,9 @@ public partial class PostcodeDistanceCalculator : Form
 
     /// <summary>The last calculation, waiting to be saved. Null when the shown journeys are already in history.</summary>
     private JourneyBatch? unsavedBatch;
+
+    /// <summary>The saved batch the shown journeys were loaded from, so Google Maps figures entered for them are saved too. Null for fresh results.</summary>
+    private JourneyBatch? shownFromBatch;
 
     /// <summary>
     /// Set when history.json exists but couldn't be loaded. Saving is then disabled for the session,
@@ -126,6 +131,7 @@ public partial class PostcodeDistanceCalculator : Form
         SetIcon(btnCopyHistoryTotal, MaterialIcon.ContentCopy, 16);
         SetIcon(btnReopenHistory, MaterialIcon.History, 16);
         SetIcon(btnToggleHistory, MaterialIcon.ChevronRight, 20);
+        SetIcon(btnVerifyJourney, MaterialIcon.Map, 16);
 
         lblInputInfo.Image?.Dispose();
         lblInputInfo.Image = IconFont.Render(MaterialIcon.Info, lblInputInfo.LogicalToDeviceUnits(18), IconColor(lblInputInfo));
@@ -144,7 +150,7 @@ public partial class PostcodeDistanceCalculator : Form
 
     private void DisposeIcons()
     {
-        foreach (var button in new ButtonBase[] { btnHelp, btnCopyJourneyTotal, btnCopyHistoryTotal, btnReopenHistory, btnToggleHistory })
+        foreach (var button in new ButtonBase[] { btnHelp, btnCopyJourneyTotal, btnCopyHistoryTotal, btnReopenHistory, btnToggleHistory, btnVerifyJourney })
             button.Image?.Dispose();
         lblInputInfo.Image?.Dispose();
     }
@@ -214,7 +220,7 @@ public partial class PostcodeDistanceCalculator : Form
         splitContainerLeft.Panel1.Enabled = false;
         splitContainer.Panel2.Enabled = false;
         btnAddNew.Enabled = false;
-        lblStatus.Text = "Fetching coordinates...";
+        lblStatus.Text = "Looking up postcodes...";
         ShowJourneys([], savable: null);
 
         try
@@ -224,29 +230,22 @@ public partial class PostcodeDistanceCalculator : Form
 
             // Built locally and only shown on full success, so a failure can't leave a partial batch
             var journeys = new List<Journey>();
-            var coords = new Dictionary<string, (double Lat, double Lon)>();
+
+            // Every postcode in the batch in one lookup, then one routing request per journey
+            var locations = await RouteApi.GetLocationsAsync(parsed.Routes.SelectMany(r => r.Postcodes));
 
             foreach (var route in parsed.Routes)
             {
-                int journeyNum = journeys.Count + 1;
+                lblStatus.Text = parsed.Routes.Count > 1
+                    ? $"Routing journey {journeys.Count + 1} of {parsed.Routes.Count}..."
+                    : "Routing...";
 
-                foreach (var code in route.Postcodes.Where(c => !coords.ContainsKey(c)).Distinct())
-                {
-                    lblStatus.Text = $"Locating {code}...";
-                    coords[code] = await RouteApi.GetCoordinatesAsync(code);
-                }
+                var stops = route.Postcodes.Select(p => locations[p]).ToList();
+                var legMeters = await RouteApi.GetLegDistancesMetersAsync(stops);
 
-                var legs = new List<Leg>();
-                for (int i = 0; i < route.Postcodes.Count - 1; i++)
-                {
-                    string start = route.Postcodes[i];
-                    string end = route.Postcodes[i + 1];
-
-                    lblStatus.Text = $"Journey {journeyNum}: Routing {start} -> {end}...";
-                    double meters = await RouteApi.GetDrivingDistanceMetersAsync(coords[start], coords[end]) * RouteApi.CalibrationFactor;
-                    legs.Add(new Leg(start, end, meters));
-                }
-
+                var legs = legMeters
+                    .Select((meters, i) => new Leg(route.Postcodes[i], route.Postcodes[i + 1], meters * RouteApi.CalibrationFactor))
+                    .ToList();
                 journeys.Add(new Journey(dateTag, route.RawInput, legs));
             }
 
@@ -262,11 +261,28 @@ public partial class PostcodeDistanceCalculator : Form
                     "These routes were skipped because they have fewer than two postcodes:\n\n" + string.Join("\n", parsed.Skipped.Select(s => $"• {s}")),
                     "Some Routes Skipped", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+
+            // Retired postcodes still route from their last known location, but say so
+            var terminated = locations.Where(l => l.Value.IsTerminated).ToList();
+            if (terminated.Count > 0)
+            {
+                MessageBox.Show(
+                    "These postcodes are no longer in use, so their last known location was used:\n\n" +
+                    string.Join("\n", terminated.Select(t => t.Value.YearTerminated is int year ? $"• {t.Key} (retired {year})" : $"• {t.Key}")),
+                    "Retired Postcodes", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        catch (RouteLookupException ex)
+        {
+            // Expected problems: unknown postcode, no route, network or service errors
+            MessageBox.Show(ex.Message, "Calculation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            lblStatus.Text = $"Failed. {ex.Message.ReplaceLineEndings(" ")}";
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error: {ex.Message}", "Calculation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            lblStatus.Text = $"Failed. {ex.Message}";
+            // Anything else is a bug: say so plainly and include the details rather than passing it off as a lookup failure
+            MessageBox.Show($"Something unexpected went wrong. Please report this:\n\n{ex}", "Unexpected Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            lblStatus.Text = $"Unexpected error: {ex.GetType().Name}.";
         }
         finally
         {
@@ -277,14 +293,17 @@ public partial class PostcodeDistanceCalculator : Form
 
     /// <summary>
     /// Displays <paramref name="journeys"/> in the breakdown. <paramref name="savable"/> is the batch that
-    /// "Save to History" would add, or null when there's nothing new to save.
+    /// "Save to History" would add, or null when there's nothing new to save. <paramref name="savedIn"/> is the
+    /// history batch the journeys came from, if any.
     /// </summary>
-    private void ShowJourneys(IReadOnlyList<Journey> journeys, JourneyBatch? savable)
+    private void ShowJourneys(IReadOnlyList<Journey> journeys, JourneyBatch? savable, JourneyBatch? savedIn = null)
     {
         shownJourneys = journeys;
         unsavedBatch = savable;
+        shownFromBatch = savedIn;
         RenderResults();
         btnAddNew.Enabled = savable != null;
+        btnVerifyJourney.Enabled = journeys.Count > 0;
     }
 
     private void RenderResults()
@@ -376,7 +395,7 @@ public partial class PostcodeDistanceCalculator : Form
         => $"{batch.CreatedAt:dd/MM/yyyy HH:mm}  ({JourneyCount(batch.Journeys.Count)}, {Unit.FormatNumber(batch.TotalKm)} {Unit.ShortName()})";
 
     private string JourneyText(Journey journey)
-        => $"{journey.FirstPostcode}... ({Unit.FormatNumber(journey.TotalKm)} {Unit.ShortName()})";
+        => $"{journey.FirstPostcode}... ({Unit.FormatNumber(journey.TotalKm)} {Unit.ShortName()}{(journey.IsVerified ? ", Google Maps" : "")})";
 
     /// <summary>
     /// Text for each history row as screen readers (and ListBox.GetItemText) see it. The rows are owner-drawn,
@@ -408,6 +427,15 @@ public partial class PostcodeDistanceCalculator : Form
 
     private void LstHistory_MouseDown(object sender, MouseEventArgs e)
     {
+        // Right-click selects the row under the cursor (without loading it) so the context menu acts on that row
+        if (e.Button == MouseButtons.Right)
+        {
+            // Empty space clears the selection, so the menu doesn't open for a row the user didn't click
+            int rowIndex = lstHistory.IndexFromPoint(e.Location);
+            SelectHistoryRowWithoutLoading(rowIndex == ListBox.NoMatches ? -1 : rowIndex);
+            return;
+        }
+
         // Left single-clicks only: the second press of a double-click would otherwise delete the row that moved up under the cursor
         if (e.Button != MouseButtons.Left || e.Clicks > 1) return;
 
@@ -426,12 +454,8 @@ public partial class PostcodeDistanceCalculator : Form
     /// <summary>Shows a saved batch (all its journeys) or a single saved journey in the breakdown.</summary>
     private void LoadHistoryItem(object item)
     {
-        IReadOnlyList<Journey> journeys = item switch
-        {
-            JourneyBatch batch => [.. batch.Journeys], // Copy so deleting from history doesn't change what's shown
-            JourneyRow row => [row.Journey],
-            _ => []
-        };
+        // A copy, so deleting from history doesn't change what's shown
+        IReadOnlyList<Journey> journeys = HistoryItemJourneys(item);
         if (journeys.Count == 0) return;
 
         txtPostcodes.Text = string.Join(" ; ", journeys.Select(j => j.RawInput));
@@ -443,7 +467,7 @@ public partial class PostcodeDistanceCalculator : Form
         loadedMixedDates = dates.Length > 1 ? dates : null;
 
         // Already in history, so nothing to save. Set after the text changes above, which also disable Save.
-        ShowJourneys(journeys, savable: null);
+        ShowJourneys(journeys, savable: null, savedIn: HistoryItemBatch(item));
 
         lblStatus.Text = item is JourneyBatch b
             ? $"Loaded batch from {b.CreatedAt:dd/MM/yyyy HH:mm} ({JourneyCount(journeys.Count)})."
@@ -477,6 +501,153 @@ public partial class PostcodeDistanceCalculator : Form
         RefreshHistoryList();
         return true;
     }
+
+    #region Google Maps verification
+
+    private void BtnVerifyJourney_Click(object sender, EventArgs e)
+        => VerifyWithGoogleMaps(shownJourneys, shownFromBatch);
+
+    /// <summary>
+    /// Opens each journey in Google Maps in turn and asks for the distance Google shows. Entered figures replace the
+    /// app's estimate in the shown results, in the unsaved batch, and in saved history when <paramref name="savedIn"/> is set.
+    /// </summary>
+    private void VerifyWithGoogleMaps(IReadOnlyList<Journey> journeys, JourneyBatch? savedIn)
+    {
+        int updated = 0;
+        for (int i = 0; i < journeys.Count; i++)
+        {
+            var journey = journeys[i];
+            var link = GoogleMapsLink.ForPostcodes(journey.Stops);
+            if (link == null)
+            {
+                MessageBox.Show(
+                    $"Journey {i + 1} has {journey.Stops.Count} stops, but Google Maps links allow at most {GoogleMapsLink.MaxStops}. Check it in Google Maps in parts instead.",
+                    "Too Many Stops", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                continue;
+            }
+
+            if (!OpenInBrowser(link)) break; // Still save and show anything entered before this
+
+            string stops = string.Join(", ", journey.Stops.Select(GoogleMapsLink.FormatPostcode));
+            string heading = journeys.Count > 1 ? $"Journey {i + 1} of {journeys.Count}: {stops}" : stops;
+            string? current = journey.GoogleMapsKm is double km ? DistanceInput.Format(Unit.FromKm(km)) : null;
+
+            using var dialog = new VerifyDistanceDialog(heading, Unit.FormatNumber(journey.EstimatedKm), Unit.LongName(), current, () => OpenInBrowser(link));
+            var result = dialog.ShowDialog(this);
+            if (result == DialogResult.Cancel) break;
+            if (result != DialogResult.OK) continue;
+
+            ReplaceJourney(journey, journey with { GoogleMapsKm = Unit.ToKm(dialog.Distance) }, savedIn);
+            updated++;
+        }
+
+        if (updated == 0) return;
+        AfterJourneysChanged(savedIn);
+        lblStatus.Text = $"Updated {JourneyCount(updated)} with Google Maps figures.";
+    }
+
+    /// <summary>Swaps <paramref name="old"/> for <paramref name="updated"/> everywhere it appears: shown results, unsaved batch and saved batch.</summary>
+    private void ReplaceJourney(Journey old, Journey updated, JourneyBatch? savedIn)
+    {
+        static void ReplaceIn(List<Journey> list, Journey old, Journey updated)
+        {
+            int index = list.FindIndex(j => ReferenceEquals(j, old));
+            if (index >= 0) list[index] = updated;
+        }
+
+        shownJourneys = shownJourneys.Select(j => ReferenceEquals(j, old) ? updated : j).ToList();
+        if (unsavedBatch != null) ReplaceIn(unsavedBatch.Journeys, old, updated);
+        if (savedIn != null) ReplaceIn(savedIn.Journeys, old, updated);
+    }
+
+    /// <summary>Re-renders after journeys change, saving history first if a saved batch was changed.</summary>
+    private void AfterJourneysChanged(JourneyBatch? savedIn)
+    {
+        if (savedIn != null)
+        {
+            SaveHistory();
+            RefreshHistoryList();
+        }
+        RenderResults();
+    }
+
+    /// <summary>Opens <paramref name="uri"/> in the default browser. Returns false (after telling the user) if it couldn't.</summary>
+    private bool OpenInBrowser(Uri uri)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            return true;
+        }
+        catch (Win32Exception ex)
+        {
+            MessageBox.Show($"Couldn't open the browser:\n{ex.Message}\n\nLink:\n{uri.AbsoluteUri}", "Google Maps", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+    }
+
+    /// <summary>Sets up the history right-click menu for the selected row; cancels it when nothing is selected.</summary>
+    private void MnuHistory_Opening(object sender, CancelEventArgs e)
+    {
+        object? item = lstHistory.SelectedItem;
+        if (item is not (JourneyBatch or JourneyRow))
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        var journeys = HistoryItemJourneys(item);
+        mnuVerify.Text = item is JourneyBatch ? "Verify All Journeys with Google Maps..." : "Verify with Google Maps...";
+        mnuOpenInMaps.Visible = item is JourneyRow;
+        mnuUseEstimate.Enabled = journeys.Any(j => j.IsVerified);
+    }
+
+    private void MnuVerify_Click(object sender, EventArgs e)
+    {
+        if (lstHistory.SelectedItem is { } item)
+            VerifyWithGoogleMaps(HistoryItemJourneys(item), HistoryItemBatch(item));
+    }
+
+    private void MnuOpenInMaps_Click(object sender, EventArgs e)
+    {
+        if (lstHistory.SelectedItem is not JourneyRow row) return;
+
+        if (GoogleMapsLink.ForPostcodes(row.Journey.Stops) is { } link)
+            OpenInBrowser(link);
+        else
+            MessageBox.Show($"This journey has more than {GoogleMapsLink.MaxStops} stops, which Google Maps links don't support.", "Too Many Stops", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    /// <summary>Removes Google Maps figures from the selected batch or journey, going back to the app's estimate.</summary>
+    private void MnuUseEstimate_Click(object sender, EventArgs e)
+    {
+        if (lstHistory.SelectedItem is not { } item) return;
+
+        var batch = HistoryItemBatch(item);
+        foreach (var journey in HistoryItemJourneys(item).Where(j => j.IsVerified))
+            ReplaceJourney(journey, journey with { GoogleMapsKm = null }, batch);
+
+        AfterJourneysChanged(batch);
+        lblStatus.Text = "Using this app's estimate instead of Google Maps.";
+    }
+
+    /// <summary>The journeys a history row stands for (a copy of a batch's list, or the one journey).</summary>
+    private static IReadOnlyList<Journey> HistoryItemJourneys(object item) => item switch
+    {
+        JourneyBatch batch => [.. batch.Journeys],
+        JourneyRow row => [row.Journey],
+        _ => []
+    };
+
+    /// <summary>The saved batch a history row belongs to.</summary>
+    private static JourneyBatch? HistoryItemBatch(object item) => item switch
+    {
+        JourneyBatch batch => batch,
+        JourneyRow row => row.Batch,
+        _ => null
+    };
+
+    #endregion
 
     private void BtnClearHistory_Click(object sender, EventArgs e)
     {
@@ -524,10 +695,15 @@ public partial class PostcodeDistanceCalculator : Form
         int index = lstHistory.SelectedIndex;
         if (!DeleteHistoryItem(item) || lstHistory.Items.Count == 0) return;
 
+        SelectHistoryRowWithoutLoading(Math.Min(index, lstHistory.Items.Count - 1));
+    }
+
+    private void SelectHistoryRowWithoutLoading(int index)
+    {
         suppressHistoryLoad = true;
         try
         {
-            lstHistory.SelectedIndex = Math.Min(index, lstHistory.Items.Count - 1);
+            lstHistory.SelectedIndex = index;
         }
         finally
         {
@@ -684,7 +860,11 @@ public partial class PostcodeDistanceCalculator : Form
             "• History is saved to history.json next to the app, so it survives restarts and moves with the app folder.\n" +
             "• Click a batch header to load all its journeys, or a journey to load just that one.\n" +
             "• Click the cross on a row (or select it and press Delete) to remove it, or 'Clear' to delete all history (e.g. at month end).\n\n" +
-            "5. QUICK COPY:\n" +
+            "5. CHECK AGAINST GOOGLE MAPS:\n" +
+            "• Click 'Verify' (or right-click a saved journey or batch) to open each journey in Google Maps.\n" +
+            "• Type in the distance Google shows and it replaces this app's estimate in the totals and history.\n" +
+            "• Right-click a saved journey and choose 'Use This App's Estimate' to undo.\n\n" +
+            "6. QUICK COPY:\n" +
             "• Click a total or its Copy button to copy just the number (e.g. 123.4) for pasting into a spreadsheet.";
 
         MessageBox.Show(helpText, "How to Use", MessageBoxButtons.OK, MessageBoxIcon.Information);

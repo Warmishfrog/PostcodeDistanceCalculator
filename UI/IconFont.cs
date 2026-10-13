@@ -13,7 +13,7 @@ namespace PostcodeDistanceCalculator.UI;
 /// The URL below is only needed when adding icons during development.
 /// To add an icon, re-download the subset with its name added to <c>icon_names</c> (names must be in
 /// alphabetical order), replace <c>Resources/MaterialSymbolsOutlined.ttf</c>, and add the codepoint here:
-/// <c>https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&amp;icon_names=chevron_right,close,content_copy,help,history,info</c>
+/// <c>https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&amp;icon_names=chevron_right,close,content_copy,help,history,info,map</c>
 /// (the CSS links to the TrueType file). Codepoints are listed in the material-design-icons repository's
 /// <c>MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].codepoints</c> file.
 /// </remarks>
@@ -24,7 +24,8 @@ public enum MaterialIcon
     ContentCopy = 0xE14D,
     Help = 0xE8FD,
     History = 0xE8B3,
-    Info = 0xE88E
+    Info = 0xE88E,
+    Map = 0xE55B
 }
 
 /// <summary>

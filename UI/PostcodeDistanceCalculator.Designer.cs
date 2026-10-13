@@ -49,6 +49,7 @@ partial class PostcodeDistanceCalculator
         flowJourneyTotal = new FlowLayoutPanel();
         lblJourneyTotal = new Label();
         btnCopyJourneyTotal = new Button();
+        btnVerifyJourney = new Button();
         lblStatus = new Label();
         btnReopenHistory = new Button();
         lblHistoryHeader = new Label();
@@ -58,6 +59,10 @@ partial class PostcodeDistanceCalculator
         btnClearHistory = new Button();
         btnToggleHistory = new Button();
         toolTipInput = new ToolTip(components);
+        mnuHistory = new ContextMenuStrip(components);
+        mnuVerify = new ToolStripMenuItem();
+        mnuOpenInMaps = new ToolStripMenuItem();
+        mnuUseEstimate = new ToolStripMenuItem();
         panelHeader.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)splitContainer).BeginInit();
         splitContainer.Panel1.SuspendLayout();
@@ -69,6 +74,7 @@ partial class PostcodeDistanceCalculator
         splitContainerLeft.SuspendLayout();
         grpUnits.SuspendLayout();
         flowJourneyTotal.SuspendLayout();
+        mnuHistory.SuspendLayout();
         SuspendLayout();
         //
         // panelHeader
@@ -339,9 +345,10 @@ partial class PostcodeDistanceCalculator
         flowJourneyTotal.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         flowJourneyTotal.Controls.Add(lblJourneyTotal);
         flowJourneyTotal.Controls.Add(btnCopyJourneyTotal);
+        flowJourneyTotal.Controls.Add(btnVerifyJourney);
         flowJourneyTotal.Location = new Point(15, 277);
         flowJourneyTotal.Name = "flowJourneyTotal";
-        flowJourneyTotal.Size = new Size(238, 26);
+        flowJourneyTotal.Size = new Size(319, 26);
         flowJourneyTotal.TabIndex = 2;
         flowJourneyTotal.WrapContents = false;
         //
@@ -376,6 +383,25 @@ partial class PostcodeDistanceCalculator
         toolTipInput.SetToolTip(btnCopyJourneyTotal, "Copy Journey Total");
         btnCopyJourneyTotal.UseVisualStyleBackColor = false;
         btnCopyJourneyTotal.Click += BtnCopyJourneyTotal_Click;
+        // 
+        // btnVerifyJourney
+        // 
+        btnVerifyJourney.BackColor = Color.FromArgb(226, 232, 240);
+        btnVerifyJourney.Enabled = false;
+        btnVerifyJourney.FlatAppearance.BorderSize = 0;
+        btnVerifyJourney.FlatStyle = FlatStyle.Flat;
+        btnVerifyJourney.Font = new Font("Segoe UI", 9F);
+        btnVerifyJourney.ImageAlign = ContentAlignment.MiddleLeft;
+        btnVerifyJourney.Location = new Point(244, 0);
+        btnVerifyJourney.Margin = new Padding(6, 0, 0, 0);
+        btnVerifyJourney.Name = "btnVerifyJourney";
+        btnVerifyJourney.Size = new Size(75, 26);
+        btnVerifyJourney.TabIndex = 2;
+        btnVerifyJourney.Text = "Verify";
+        btnVerifyJourney.TextImageRelation = TextImageRelation.ImageBeforeText;
+        toolTipInput.SetToolTip(btnVerifyJourney, "Check these journeys in Google Maps and enter Google's distances");
+        btnVerifyJourney.UseVisualStyleBackColor = false;
+        btnVerifyJourney.Click += BtnVerifyJourney_Click;
         //
         // lblStatus
         //
@@ -424,6 +450,7 @@ partial class PostcodeDistanceCalculator
         //
         lstHistory.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         lstHistory.BorderStyle = BorderStyle.FixedSingle;
+        lstHistory.ContextMenuStrip = mnuHistory;
         lstHistory.DrawMode = DrawMode.OwnerDrawFixed;
         lstHistory.Font = new Font("Segoe UI", 9F);
         lstHistory.FormattingEnabled = true;
@@ -503,6 +530,34 @@ partial class PostcodeDistanceCalculator
         toolTipInput.SetToolTip(btnToggleHistory, "Close Saved Journeys panel");
         btnToggleHistory.UseVisualStyleBackColor = false;
         btnToggleHistory.Click += BtnToggleHistory_Click;
+        // 
+        // mnuHistory
+        // 
+        mnuHistory.Items.AddRange(new ToolStripItem[] { mnuVerify, mnuOpenInMaps, mnuUseEstimate });
+        mnuHistory.Name = "mnuHistory";
+        mnuHistory.Size = new Size(260, 70);
+        mnuHistory.Opening += MnuHistory_Opening;
+        // 
+        // mnuVerify
+        // 
+        mnuVerify.Name = "mnuVerify";
+        mnuVerify.Size = new Size(259, 22);
+        mnuVerify.Text = "Verify with Google Maps...";
+        mnuVerify.Click += MnuVerify_Click;
+        // 
+        // mnuOpenInMaps
+        // 
+        mnuOpenInMaps.Name = "mnuOpenInMaps";
+        mnuOpenInMaps.Size = new Size(259, 22);
+        mnuOpenInMaps.Text = "Open in Google Maps";
+        mnuOpenInMaps.Click += MnuOpenInMaps_Click;
+        // 
+        // mnuUseEstimate
+        // 
+        mnuUseEstimate.Name = "mnuUseEstimate";
+        mnuUseEstimate.Size = new Size(259, 22);
+        mnuUseEstimate.Text = "Use This App's Estimate";
+        mnuUseEstimate.Click += MnuUseEstimate_Click;
         //
         // PostcodeDistanceCalculator
         //
@@ -527,6 +582,7 @@ partial class PostcodeDistanceCalculator
         splitContainerLeft.Panel1.PerformLayout();
         flowJourneyTotal.ResumeLayout(false);
         flowJourneyTotal.PerformLayout();
+        mnuHistory.ResumeLayout(false);
         splitContainerLeft.Panel2.ResumeLayout(false);
         splitContainerLeft.Panel2.PerformLayout();
         ((System.ComponentModel.ISupportInitialize)splitContainerLeft).EndInit();
@@ -560,6 +616,11 @@ partial class PostcodeDistanceCalculator
     private FlowLayoutPanel flowJourneyTotal;
     private Label lblJourneyTotal;
     private Button btnCopyJourneyTotal;
+    private Button btnVerifyJourney;
+    private ContextMenuStrip mnuHistory;
+    private ToolStripMenuItem mnuVerify;
+    private ToolStripMenuItem mnuOpenInMaps;
+    private ToolStripMenuItem mnuUseEstimate;
     private Label lblStatus;
     private Label lblHistoryHeader;
     private Button btnToggleHistory;
