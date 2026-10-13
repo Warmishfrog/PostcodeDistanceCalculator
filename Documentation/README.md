@@ -343,7 +343,7 @@ PostcodeDistanceCalculator/
 ├── PostcodeDistanceCalculator.csproj      # .NET 10 project file: version, metadata, app icon, DPI mode
 ├── PostcodeDistanceCalculator.slnx        # Solution file containing the app and test projects
 ├── PostcodeDistanceCalculator.Tests/      # xUnit tests for the parser, formatter, models, history store and icon font
-├── docs/
+├── Documentation/
 │   ├── README.md                              # Project documentation (this file)
 │   └── CHANGELOG.md                           # Changes in each version
 ├── CLAUDE.md                              # Local Claude Code instructions (not tracked; must stay at the root)
