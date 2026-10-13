@@ -52,6 +52,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 First release: calculate driving distances between UK postcodes using postcodes.io and Project OSRM, with multi-stop routes, several journeys at once (separated by `;`), miles/kilometres, an optional date tag, an in-session history list and copy buttons.
 
 [Unreleased]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/compare/2.1.0...HEAD
-[2.1.0]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/compare/2315d73...2.1.0
-[2.0.0]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/compare/1.0...2315d73
+[2.1.0]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/compare/2.0.0...2.1.0
+[2.0.0]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/compare/1.0...2.0.0
 [1.0]: https://github.com/Warmishfrog/PostcodeDistanceCalculator/releases/tag/1.0
