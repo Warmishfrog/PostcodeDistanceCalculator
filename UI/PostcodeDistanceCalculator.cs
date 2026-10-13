@@ -43,6 +43,13 @@ public partial class PostcodeDistanceCalculator : Form
     /// <summary>Brief popup confirming exactly what was copied to the clipboard.</summary>
     private readonly ToolTip copyToast;
 
+    // Slate palette shared with the Designer's light buttons
+    private static readonly Color BatchHeaderBackColor = Color.FromArgb(226, 232, 240);
+    private static readonly Color SaveButtonBackColor = Color.FromArgb(226, 232, 240);
+    private static readonly Color SaveButtonForeColor = Color.FromArgb(51, 65, 85);
+    private static readonly Color SaveButtonDisabledBackColor = Color.FromArgb(148, 163, 184);
+    private static readonly Color SaveButtonDisabledForeColor = Color.FromArgb(71, 85, 105);
+
     private DistanceUnit Unit => rdoMiles.Checked ? DistanceUnit.Miles : DistanceUnit.Kilometers;
 
     private double ShownTotalKm => shownJourneys.Sum(j => j.TotalKm);
@@ -58,17 +65,41 @@ public partial class PostcodeDistanceCalculator : Form
         txtDate.PlaceholderText = DateTime.Now.ToString("dd/MM");
 
         this.Load += PostcodeDistanceCalculator_Load;
-        txtPostcodes.TextChanged += TxtPostcodes_TextChanged;
-
-        // Click a total label to copy it (hand cursor and Copy button text are set in the Designer)
-        lblJourneyTotal.Click += LblJourneyTotal_Click;
-        lblHistoryTotal.Click += LblHistoryTotal_Click;
+        this.DpiChanged += (_, _) => ApplyDpiDependentVisuals();
 
         btnAddNew.Enabled = false;
     }
 
+    /// <summary>
+    /// Sizes the owner-drawn history rows and renders the Material icons for the current DPI.
+    /// Runs on load and again whenever the window moves to a monitor with a different scale.
+    /// </summary>
+    private void ApplyDpiDependentVisuals()
+    {
+        lstHistory.ItemHeight = lstHistory.LogicalToDeviceUnits(26);
+
+        SetIcon(btnHelp, MaterialIcon.Help, 16);
+        SetIcon(btnCopyJourneyTotal, MaterialIcon.ContentCopy, 16);
+        SetIcon(btnCopyHistoryTotal, MaterialIcon.ContentCopy, 16);
+        SetIcon(btnReopenHistory, MaterialIcon.History, 16);
+        SetIcon(btnToggleHistory, MaterialIcon.ChevronRight, 20);
+
+        lblInputInfo.Image?.Dispose();
+        lblInputInfo.Image = IconFont.Render(MaterialIcon.Info, lblInputInfo.LogicalToDeviceUnits(18), lblInputInfo.ForeColor);
+    }
+
+    /// <summary>Replaces <paramref name="button"/>'s image with <paramref name="icon"/> in its text colour, <paramref name="logicalSize"/> pixels at 100% scale.</summary>
+    private static void SetIcon(ButtonBase button, MaterialIcon icon, int logicalSize)
+    {
+        button.Image?.Dispose();
+        button.Image = IconFont.Render(icon, button.LogicalToDeviceUnits(logicalSize), button.ForeColor);
+    }
+
     private void PostcodeDistanceCalculator_Load(object? sender, EventArgs e)
     {
+        // Here rather than the constructor so DeviceDpi reflects the monitor the window opens on
+        ApplyDpiDependentVisuals();
+
         try
         {
             history = HistoryStore.Load(historyPath, out string? corruptBackupPath);
@@ -233,12 +264,13 @@ public partial class PostcodeDistanceCalculator : Form
         if (e.Index < 0 || e.Index >= lstHistory.Items.Count) return;
 
         bool isSelected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+        bool highContrast = SystemInformation.HighContrast;
         object item = lstHistory.Items[e.Index];
 
-        // Batch headers get a shaded band so groups stand out
-        if (item is JourneyBatch && !isSelected)
+        // Batch headers get a shaded band so groups stand out (not in high contrast, which must use system colours)
+        if (item is JourneyBatch && !isSelected && !highContrast)
         {
-            using var headerBrush = new SolidBrush(Color.FromArgb(226, 232, 240));
+            using var headerBrush = new SolidBrush(BatchHeaderBackColor);
             e.Graphics.FillRectangle(headerBrush, e.Bounds);
         }
         else
@@ -246,39 +278,46 @@ public partial class PostcodeDistanceCalculator : Form
             e.DrawBackground();
         }
 
-        Brush textBrush = isSelected ? Brushes.White : Brushes.Black;
-        Brush dateBrush = isSelected ? Brushes.LightGray : Brushes.Gray;
+        // e.ForeColor is the system text colour, or the highlight text colour when the row is selected
+        Color textColor = e.ForeColor;
+        Color mutedColor = isSelected || highContrast ? e.ForeColor : SystemColors.GrayText;
+        Color deleteColor = isSelected || highContrast ? e.ForeColor : Color.Crimson;
         Font font = e.Font ?? SystemFonts.DefaultFont;
-        int y = e.Bounds.Y + 4;
+
+        const TextFormatFlags flags = TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix;
+        Rectangle deleteBounds = GetDeleteButtonBounds(e.Bounds);
+        int padding = lstHistory.LogicalToDeviceUnits(5);
+
+        // Text runs from 'left' up to the delete button, vertically centred in the row
+        Rectangle TextBounds(int left) => Rectangle.FromLTRB(left, e.Bounds.Top, Math.Max(left, deleteBounds.Left - padding), e.Bounds.Bottom);
 
         if (item is JourneyBatch batch)
         {
             using var boldFont = new Font(font, FontStyle.Bold);
-            e.Graphics.DrawString(
+            TextRenderer.DrawText(e.Graphics,
                 $"{batch.CreatedAt:dd/MM/yyyy HH:mm}  ({JourneyCount(batch.Journeys.Count)}, {Unit.FormatNumber(batch.TotalKm)} {Unit.ShortName()})",
-                boldFont, textBrush, e.Bounds.X + 5, y);
+                boldFont, TextBounds(e.Bounds.Left + padding), textColor, flags);
         }
         else if (item is JourneyRow row)
         {
             // Journeys are indented under their batch header
-            int textOffset = 20;
+            int left = e.Bounds.Left + lstHistory.LogicalToDeviceUnits(20);
 
             // Draw date only if present, pushing the text past however wide the date is
             if (!string.IsNullOrWhiteSpace(row.Journey.DateTag))
             {
                 string dateText = $"[{row.Journey.DateTag}]";
-                e.Graphics.DrawString(dateText, font, dateBrush, e.Bounds.X + textOffset, y);
-                textOffset += (int)Math.Ceiling(e.Graphics.MeasureString(dateText, font).Width) + 4;
+                TextRenderer.DrawText(e.Graphics, dateText, font, TextBounds(left), mutedColor, flags);
+                // Measure without EndEllipsis/VerticalCenter: with no proposed size they make the measured width collapse
+                left += TextRenderer.MeasureText(e.Graphics, dateText, font, Size.Empty, TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix).Width + padding;
             }
 
-            e.Graphics.DrawString(
+            TextRenderer.DrawText(e.Graphics,
                 $"{row.Journey.FirstPostcode}... ({Unit.FormatNumber(row.Journey.TotalKm)} {Unit.ShortName()})",
-                font, textBrush, e.Bounds.X + textOffset, y);
+                font, TextBounds(left), textColor, flags);
         }
 
-        Rectangle xRect = GetDeleteButtonBounds(e.Bounds);
-        Brush xBrush = isSelected ? Brushes.White : Brushes.Crimson;
-        e.Graphics.DrawString("✕", font, xBrush, xRect.X, xRect.Y);
+        IconFont.Draw(e.Graphics, MaterialIcon.Close, deleteBounds, deleteColor);
 
         e.DrawFocusRectangle();
     }
@@ -388,8 +427,23 @@ public partial class PostcodeDistanceCalculator : Form
 
     private static string JourneyCount(int count) => count == 1 ? "1 journey" : $"{count} journeys";
 
-    private static Rectangle GetDeleteButtonBounds(Rectangle itemBounds)
-        => new(itemBounds.Right - 22, itemBounds.Y + 4, 18, 18);
+    /// <summary>The square delete icon at the right of a history row, sized from the row height so it follows DPI.</summary>
+    private Rectangle GetDeleteButtonBounds(Rectangle itemBounds)
+    {
+        int size = itemBounds.Height - lstHistory.LogicalToDeviceUnits(8);
+        int right = itemBounds.Right - lstHistory.LogicalToDeviceUnits(4);
+        return new Rectangle(right - size, itemBounds.Top + (itemBounds.Height - size) / 2, size, size);
+    }
+
+    /// <summary>Delete removes the selected history row, the same as clicking its cross.</summary>
+    private void LstHistory_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.KeyCode == Keys.Delete && lstHistory.SelectedItem is { } item)
+        {
+            e.Handled = true;
+            DeleteHistoryItem(item);
+        }
+    }
 
     private void RecalculateOverallTotal()
         => lblHistoryTotal.Text = $"History Total: {Unit.FormatNumber(HistoryTotalKm)} {Unit.ShortName()}";
@@ -485,6 +539,20 @@ public partial class PostcodeDistanceCalculator : Form
     }
     #endregion
 
+    /// <summary>Ctrl+Enter calculates. Plain Enter adds a new line, since postcodes can be entered one per line.</summary>
+    private void TxtPostcodes_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.KeyCode == Keys.Enter && e.Control)
+        {
+            e.SuppressKeyPress = true;
+            btnCalculate.PerformClick();
+        }
+    }
+
+    /// <summary>Keeps the Copy button just right of the journey total, however long the total text gets.</summary>
+    private void LblJourneyTotal_SizeChanged(object sender, EventArgs e)
+        => btnCopyJourneyTotal.Left = lblJourneyTotal.Right + LogicalToDeviceUnits(8);
+
     private void TxtPostcodes_TextChanged(object? sender, EventArgs e)
     {
         btnAddNew.Enabled = false;
@@ -495,16 +563,9 @@ public partial class PostcodeDistanceCalculator : Form
 
     private void BtnAddNew_EnabledChanged(object sender, EventArgs e)
     {
-        if (btnAddNew.Enabled)
-        {
-            btnAddNew.BackColor = Color.FromArgb(226, 232, 240);
-            btnAddNew.ForeColor = Color.FromArgb(51, 65, 85);
-        }
-        else
-        {
-            btnAddNew.BackColor = Color.FromArgb(148, 163, 184);
-            btnAddNew.ForeColor = Color.FromArgb(71, 85, 105);
-        }
+        // Flat buttons don't change colour when disabled, so darken it to show there's nothing to save
+        btnAddNew.BackColor = btnAddNew.Enabled ? SaveButtonBackColor : SaveButtonDisabledBackColor;
+        btnAddNew.ForeColor = btnAddNew.Enabled ? SaveButtonForeColor : SaveButtonDisabledForeColor;
     }
 
     private void BtnHelp_Click(object sender, EventArgs e)
@@ -513,7 +574,7 @@ public partial class PostcodeDistanceCalculator : Form
             "POSTCODE DISTANCE CALCULATOR - HELP\n" +
             "───────────────────────────────────────────────\n\n" +
             "1. SINGLE JOURNEY:\n" +
-            "Enter postcodes separated by commas (or one per line).\n" +
+            "Enter postcodes separated by commas (or one per line), then click Calculate or press Ctrl+Enter.\n" +
             "• Example: SW1A 1AA, M1 1AE, EH1 1YZ\n\n" +
             "2. MULTIPLE JOURNEYS AT ONCE:\n" +
             "Separate individual journeys using a semicolon (;).\n" +
@@ -526,7 +587,7 @@ public partial class PostcodeDistanceCalculator : Form
             "• '+ Save to History' saves the current journeys as one dated batch.\n" +
             "• History is saved to history.json next to the app, so it survives restarts and moves with the app folder.\n" +
             "• Click a batch header to load all its journeys, or a journey to load just that one.\n" +
-            "• Click the cross on a row to delete it, or 'Clear' to delete all history (e.g. at month end).\n\n" +
+            "• Click the cross on a row (or select it and press Delete) to remove it, or 'Clear' to delete all history (e.g. at month end).\n\n" +
             "5. QUICK COPY:\n" +
             "• Click a total or its Copy button to copy just the number (e.g. 123.4) for pasting into a spreadsheet.";
 

@@ -244,16 +244,27 @@ Postcodes can also be entered one per line instead of comma-separated.
 - **Save to History**: After calculating, click `+ Save to History`. The input fields clear and the journeys appear in the **Saved Journeys** sidebar as one batch, headed by its date and time, journey count and total.
 - **Persistence**: History is written to `history.json` in the same folder as the executable after every change. Keep the app in a folder you can write to (not `Program Files`); if saving fails, the app says so and keeps history until it closes. If the file is ever unreadable, it is renamed to `history.corrupt-<timestamp>.json` rather than overwritten.
 - **Recall**: Click a batch header to load all its journeys into the breakdown, or click a single journey to load just that one.
-- **Delete**: Click the red cross on a journey to remove it, or on a batch header to remove the whole batch (asks first if it holds several journeys). The **History Total** recalculates automatically.
+- **Delete**: Click the red cross on a journey to remove it, or on a batch header to remove the whole batch (asks first if it holds several journeys). With the list focused, select a row and press **Delete** to do the same from the keyboard. The **History Total** recalculates automatically.
 - **Clear**: Click **Clear** at the top of the panel to delete all history after confirming, e.g. once a month's total has been copied.
-- **Collapse / Expand Sidebar**: Click `▶` to collapse the history pane for a wider breakdown view; click `📜 History ◀` to bring it back.
+- **Collapse / Expand Sidebar**: Click the chevron button at the top right of the panel to collapse it for a wider breakdown view; click **History** to bring it back.
 
 ### Clipboard & Quick Actions
 
 - **Copy Journey Total**: Click either the `Journey Total: ...` label directly or its adjacent **Copy** button.
 - **Copy History Total**: Click the `History Total: ...` label directly or its adjacent **Copy** button.
 - Only the number is copied (e.g. `123.4`, in the currently selected unit), so it pastes straight into a spreadsheet cell. A popup above the button and the status bar show exactly what was copied.
-- **Help Dialog**: Click the top-right `❓ Help` button to view quick syntax instructions.
+- **Help Dialog**: Click the top-right **Help** button (or the info icon next to "Enter Postcodes") to view quick syntax instructions.
+
+### Keyboard Shortcuts
+
+| Key | Where | Action |
+| :--- | :--- | :--- |
+| `Ctrl+Enter` | Postcode box | Calculate |
+| `Enter` | Postcode box | New line (postcodes can be one per line) |
+| `Enter` | Date box | Calculate |
+| `Tab` | Anywhere | Moves through postcodes, date, unit, Calculate, Save, breakdown, Copy, history list, history Copy, Clear |
+| `Up` / `Down` | History list | Select and load a batch or journey |
+| `Delete` | History list | Remove the selected batch or journey |
 
 ---
 
@@ -265,7 +276,8 @@ PostcodeDistanceCalculator/
 ├── UI/
 │   ├── PostcodeDistanceCalculator.cs          # Main form: wires the classes below to the UI, history list drawing & clicks
 │   ├── PostcodeDistanceCalculator.Designer.cs # Windows Forms layout, controls, and event wiring
-│   └── PostcodeDistanceCalculator.resx        # Form XML resource definitions
+│   ├── PostcodeDistanceCalculator.resx        # Form XML resource definitions
+│   └── IconFont.cs                            # Draws Material Symbols icons from the embedded font
 ├── Models/
 │   ├── Leg.cs                                 # One driving leg between two postcodes
 │   ├── Journey.cs                             # A route of legs; totals derived from the legs
@@ -279,10 +291,12 @@ PostcodeDistanceCalculator/
 ├── Services/
 │   ├── RouteApi.cs                            # postcodes.io and OSRM calls, calibration factor
 │   └── HistoryStore.cs                        # Loads/saves history.json next to the executable
+├── Resources/
+│   └── MaterialSymbolsOutlined.ttf            # Icon font subset from fonts.google.com/icons, embedded in the exe
 ├── Program.cs                             # Application entry point with DPI awareness initialization
 ├── PostcodeDistanceCalculator.csproj      # .NET 10 project file (WinExe, Nullable, Windows Forms enabled)
 ├── PostcodeDistanceCalculator.slnx        # Solution file containing the app and test projects
-├── PostcodeDistanceCalculator.Tests/      # xUnit tests for the parser, formatter, models and history store
+├── PostcodeDistanceCalculator.Tests/      # xUnit tests for the parser, formatter, models, history store and icon font
 └── README.md                              # Project documentation (this file)
 ```
 
@@ -356,6 +370,7 @@ bin/Release/net10.0-windows/win-x64/publish/PostcodeDistanceCalculator.exe
 - **Geocoding**: Powered by [postcodes.io](https://postcodes.io/) (Open-source UK postcode and geodemographic data API based on Ordnance Survey Open Data, Royal Mail PAF, and ONS).
 - **Routing Engine**: Powered by [Project OSRM](https://project-osrm.org/) (Open Source Routing Machine).
 - **Map Data**: [OpenStreetMap](https://www.openstreetmap.org/) contributors under the Open Database License (ODbL).
+- **Icons**: [Material Symbols](https://fonts.google.com/icons) by Google, under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). A subset containing only the icons the app uses is stored in `Resources/` and embedded in the executable, so icons work offline and don't depend on Google Fonts being available. See `UI/IconFont.cs` for how to add icons.
 
 ---
 
