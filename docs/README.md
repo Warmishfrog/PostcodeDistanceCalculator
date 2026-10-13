@@ -32,6 +32,7 @@ A lightweight, modern Windows Forms desktop application built with **.NET 10** t
   - [Publish Parameter Breakdown](#publish-parameter-breakdown)
 - [Dependencies & Attribution](#dependencies--attribution)
 - [Disclaimer](#disclaimer)
+- [Changelog](#changelog)
 - [License](#license)
 
 ---
@@ -321,8 +322,11 @@ PostcodeDistanceCalculator/
 ├── PostcodeDistanceCalculator.csproj      # .NET 10 project file: version, metadata, app icon, DPI mode
 ├── PostcodeDistanceCalculator.slnx        # Solution file containing the app and test projects
 ├── PostcodeDistanceCalculator.Tests/      # xUnit tests for the parser, formatter, models, history store and icon font
-├── LICENSE                                # MIT License
-└── README.md                              # Project documentation (this file)
+├── docs/
+│   ├── README.md                              # Project documentation (this file)
+│   └── CHANGELOG.md                           # Changes in each version
+├── CLAUDE.md                              # Local Claude Code instructions (not tracked; must stay at the root)
+└── LICENSE                                # MIT License
 ```
 
 Each class has XML doc comments describing its role and behaviour.
@@ -408,6 +412,12 @@ However, all decisions and designs are reviewed and implemented by the author. T
 
 ---
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+
+---
+
 ## License
 
-This project is licensed under the [MIT License](LICENSE). The bundled Material Symbols icons are under the Apache License 2.0 (see [Dependencies & Attribution](#dependencies--attribution)).
+This project is licensed under the [MIT License](../LICENSE). The bundled Material Symbols icons are under the Apache License 2.0 (see [Dependencies & Attribution](#dependencies--attribution)).
