@@ -2,6 +2,8 @@
 
 A lightweight, modern Windows Forms desktop application built with **.NET 10** to calculate driving distances between UK postcodes. The tool supports multi-stop routes, batch processing of multiple independent journeys, live unit conversion (miles / kilometers), interactive route breakdowns, and session history management with one-click clipboard copying.
 
+<img width="944" height="603" alt="UkPostcodeDistanceCalculator" src="https://github.com/user-attachments/assets/af25fc1f-2530-455d-bef3-2aae538715de" />
+
 ---
 
 ## Table of Contents
