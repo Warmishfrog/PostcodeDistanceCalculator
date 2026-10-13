@@ -5,7 +5,8 @@ namespace PostcodeDistanceCalculator.UI;
 /// <summary>
 /// Asks for the distance Google Maps shows for one journey, while Google Maps is open in the browser.
 /// Returns <see cref="DialogResult.OK"/> with <see cref="Distance"/> set, <see cref="DialogResult.Ignore"/> to skip
-/// this journey, or <see cref="DialogResult.Cancel"/> to stop verifying altogether.
+/// this journey, <see cref="DialogResult.Abort"/> to stop and keep the figures entered so far, or
+/// <see cref="DialogResult.Cancel"/> to stop and discard every figure entered in this run.
 /// </summary>
 internal sealed class VerifyDistanceDialog : Form
 {
@@ -20,7 +21,8 @@ internal sealed class VerifyDistanceDialog : Form
     /// <param name="unitName">Unit the user should enter, e.g. "miles".</param>
     /// <param name="currentGoogleFigure">A previously entered Google Maps figure to pre-fill, if any.</param>
     /// <param name="reopenMaps">Opens the journey in Google Maps again.</param>
-    public VerifyDistanceDialog(string heading, string estimate, string unitName, string? currentGoogleFigure, Action reopenMaps)
+    /// <param name="moreJourneys">True when verifying several journeys, which adds the Stop button.</param>
+    public VerifyDistanceDialog(string heading, string estimate, string unitName, string? currentGoogleFigure, Action reopenMaps, bool moreJourneys)
     {
         Text = "Verify with Google Maps";
         Font = SystemFonts.MessageBoxFont;
@@ -67,15 +69,28 @@ internal sealed class VerifyDistanceDialog : Form
             DialogResult = DialogResult.OK;
         };
         var btnSkip = new Button { AutoSize = true, Text = "Skip", DialogResult = DialogResult.Ignore };
-        var btnStop = new Button { AutoSize = true, Text = "Stop", DialogResult = DialogResult.Cancel };
+        var btnStop = new Button { AutoSize = true, Text = "Stop", DialogResult = DialogResult.Abort, Visible = moreJourneys };
+        var btnCancel = new Button { AutoSize = true, Text = "Cancel", DialogResult = DialogResult.Cancel };
+
+        if (moreJourneys)
+        {
+            layout.Controls.Add(new Label
+            {
+                AutoSize = true,
+                MaximumSize = wrapWidth,
+                ForeColor = SystemColors.GrayText,
+                Text = "Stop keeps the figures saved so far. Cancel discards every figure from this run.",
+                Margin = new Padding(0, 8, 0, 0),
+            });
+        }
 
         var buttons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill, Margin = new Padding(0, 12, 0, 0) };
-        buttons.Controls.AddRange([btnStop, btnSkip, btnSave]);
+        buttons.Controls.AddRange([btnCancel, btnStop, btnSkip, btnSave]);
         layout.Controls.Add(buttons);
 
         Controls.Add(layout);
         AcceptButton = btnSave;
-        CancelButton = btnStop;
+        CancelButton = btnCancel;
         ActiveControl = txtDistance;
     }
 }

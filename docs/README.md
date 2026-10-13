@@ -17,10 +17,12 @@ A lightweight, modern Windows Forms desktop application built with **.NET 10** t
 - [External API Integrations](#external-api-integrations)
   - [1. Geocoding via postcodes.io](#1-geocoding-via-postcodesio)
   - [2. Driving Route Calculation via Project OSRM](#2-driving-route-calculation-via-project-osrm)
-  - [Distance Calibration Factor (+7%)](#distance-calibration-factor-7)
+  - [How Accurate Are the Distances?](#how-accurate-are-the-distances)
 - [Application Usage Guide](#application-usage-guide)
   - [Input Format & Syntax](#input-format--syntax)
   - [Date Tagging](#date-tagging)
+  - [Cancelling a Calculation](#cancelling-a-calculation)
+  - [Postcodes to Check (Typo Warnings)](#postcodes-to-check-typo-warnings)
   - [History Management](#history-management)
   - [Verifying Distances with Google Maps](#verifying-distances-with-google-maps)
   - [Clipboard & Quick Actions](#clipboard--quick-actions)
@@ -44,7 +46,7 @@ Calculating driving distances across sequences of UK postcodes is a common requi
 **UK Postcode Distance Calculator** provides a clean, single-window graphical interface that:
 1. Translates arbitrary UK postcodes into precise geographical coordinates using the free [postcodes.io](https://postcodes.io/) REST API.
 2. Calculates real driving routes between consecutive waypoints using the [Project OSRM](https://project-osrm.org/) routing engine.
-3. Automatically adjusts raw routing distances with a calibrated multiplier to closely reflect real-world navigation systems (e.g. Google Maps).
+3. Reports the routing service's driving distances as they are, with an optional check against Google Maps.
 4. Maintains a saved history sidebar allowing users to compare routes, track cumulative distances, and export totals to the clipboard.
 
 ---
@@ -110,12 +112,6 @@ A typical use is adding up all the driving done in a month to claim mileage:
 +------------------------------------------------------+
 |          Routing Engine (Project OSRM)               |
 |  GET /route/v1/driving/{stop};{stop};... per journey |
-+--------------------------+---------------------------+
-                           |
-                           v
-+------------------------------------------------------+
-|             Distance Calibration Factor              |
-|             (Meters * 1.07 multiplier)               |
 +--------------------------+---------------------------+
                            |
                            v
@@ -204,13 +200,11 @@ The application communicates with two public REST APIs over HTTPS using a shared
 }
 ```
 
-### Distance Calibration Factor (+7%)
+### How Accurate Are the Distances?
 
-In real-world driving conditions, pure mathematical route distances from OpenStreetMap can slightly underestimate actual vehicle odometer readings and commercial navigation apps (such as Google Maps) due to junction turning arcs, multi-lane routing, and local road alterations.
+Distances are OSRM's driving distances from OpenStreetMap, shown as they are. (Versions 2.1.0 and earlier added 7% to every distance to get closer to Google Maps; that was removed because one percentage can't fit short local trips and long motorway trips equally well. History saved by those versions keeps its +7% figures.)
 
-To provide practical, realistic mileage figures, the application applies a **+7% multiplier** (`RouteApi.CalibrationFactor = 1.07`) to raw OSRM distances.
-
-This is an estimate. Google Maps can differ, by more on some trips than others: it picks routes using live traffic, uses its own map data, and may start from a full address rather than the postcode's centre. A single percentage also can't fit short local trips and long motorway trips equally well. When a figure needs to match Google exactly (e.g. for a mileage claim), use [Verifying Distances with Google Maps](#verifying-distances-with-google-maps).
+Google Maps can differ, by more on some trips than others: it picks routes using live traffic, uses its own map data, and may start from a full address rather than the postcode's centre. When a figure needs to match Google exactly (e.g. for a mileage claim), use [Verifying Distances with Google Maps](#verifying-distances-with-google-maps).
 
 ---
 
@@ -236,6 +230,16 @@ SW1A 1AA, M1 1AE ; B1 1AA, LS1 1UR ; CB2 1TN, NR1 1ER
 
 Postcodes can also be entered one per line instead of comma-separated.
 
+#### Dated Journeys, One Per Line
+Start a line with a date label and a colon, and that line starts a new journey tagged with that date:
+```text
+21st: BS15 8DB, BS5 8NG, BS4 3LF, BS5 6SX, BS15 8DB
+22nd: BS15 8DB, BS15 8BE, BS4 4PR, BS15 9TR, BS10 7LD, BS15 8DB
+```
+- Any label works (`21st`, `21/10`, `Mon`), up to 20 characters without commas.
+- This works alongside the other formats: lines without a label carry on the journey above them (one postcode per line still works), semicolons still separate journeys, and journeys without a label use the **Date** box.
+- Stray double commas are ignored, and postcodes missing a comma between them (`BS14 0SL BS15 8DB`) are split apart.
+
 ### Date Tagging
 
 - Located next to the postcode input box.
@@ -244,14 +248,30 @@ Postcodes can also be entered one per line instead of comma-separated.
 - When provided, date tags are prefixed to journey headers (`[24/09]`) and shown alongside history items.
 - Separately, every saved batch is always stamped with the date and time it was calculated. This isn't optional, so saved history can always be dated.
 
+### Cancelling a Calculation
+
+While a calculation runs, **Calculate Route** becomes **Cancel**. Cancelling stops the lookups and puts the results, the Save button and the status back exactly as they were before you clicked Calculate. Your typed postcodes are left as you typed them.
+
+### Postcodes to Check (Typo Warnings)
+
+Postcodes that may be typos get a wavy amber underline in the postcode box, the breakdown and the history list, and an amber **postcodes to check** link appears beside **Enter Postcodes**. Hover over an underline (or a history row) to see why; click the link for the full list. These are only warnings: a flagged postcode still calculates if it exists.
+
+- **Not a postcode**: text that isn't in the UK postcode format, or ends in letters UK postcodes never use (C, I, K, M, O, V).
+- **Possible typo**: one slip away from a postcode you use at least twice as often (in the box and in history): one character swapped for a neighbouring key or a look-alike (S/D, O/0), or two neighbouring characters swapped round. For example `BS15 8SB` among many `BS15 8DB`s. Real neighbours a key apart, like `BS14 0SL` and `BS14 0SU`, aren't flagged.
+
 ### History Management
 
-- **Save to History**: After calculating, click `+ Save to History`. The input fields clear and the journeys appear in the **Saved Journeys** sidebar as one batch, headed by its date and time, journey count and total.
+- **Save to History**: After calculating, click `+ Save to History`. The input fields clear and the journeys appear in the **History** sidebar as one batch, headed by its date and time, journey count and total.
 - **Persistence**: History is written to `history.json` in the same folder as the executable after every change. Keep the app in a folder you can write to (not `Program Files`); if saving fails, the app says so and keeps history until it closes. If the file is ever unreadable, it is renamed to `history.corrupt-<timestamp>.json` rather than overwritten.
 - **Recall**: Click a batch header to load all its journeys into the breakdown, or click a single journey to load just that one.
 - **Delete**: Click the red cross on a journey to remove it, or on a batch header to remove the whole batch (asks first if it holds several journeys). With the list focused, select a row and press **Delete** to do the same from the keyboard. The **History Total** recalculates automatically.
-- **Clear**: Click **Clear** at the top of the panel to delete all history after confirming, e.g. once a month's total has been copied.
+- **Export**: Click **Export** to save all history to a `.txt` file wherever you choose (the file dialog starts in the app's folder). The top of the file is a readable report of every batch, journey and total; below a marked line is the exact data used for importing.
+- **Import**: Click **Import** and pick an exported `.txt` file to add its batches to your history, e.g. to bring back a past month. Batches already in history are skipped, so importing the same file twice doesn't duplicate anything.
+- **Clear**: Click **Clear** at the top of the panel to delete all history after confirming, e.g. once a month's total has been copied (export first to keep a copy).
 - **Collapse / Expand Sidebar**: Click the chevron button at the top right of the panel to collapse it for a wider breakdown view; click **History** to bring it back.
+- **Collapse batches**: Click the chevron at the left of a batch header (or select it and press Left / Right) to hide or show its journeys.
+- **Select several**: Ctrl+click or Shift+click rows to select more than one, then right-click to verify them all with Google Maps, use the app's estimate for all of them, or press **Delete** to remove them together. A plain click still loads a row.
+- **Resize the boxes**: Drag the dotted bars between the postcode box, the breakdown and the history panel to make any of them bigger or smaller. Journey rows in history show the full route, so a wider panel shows more of it.
 
 ### Verifying Distances with Google Maps
 
@@ -259,7 +279,7 @@ The app's distances are estimates from OpenStreetMap routing. To check a journey
 
 1. **For the current results**, click **Verify** next to **Copy**. **For saved history**, right-click a journey (or a batch header, to go through all its journeys) and choose **Verify with Google Maps...**.
 2. Google Maps opens in your browser with the journey's postcodes filled in as driving directions (no account or API key needed).
-3. A small window asks for the distance Google shows. Type or paste it (e.g. `210.4` or `210.4 mi`) in the unit the app is showing, then **Save**. **Skip** leaves that journey as it is; **Stop** ends verification.
+3. A small window asks for the distance Google shows. Type or paste it (e.g. `210.4` or `210.4 mi`) in the unit the app is showing, then **Save**. **Skip** leaves that journey as it is. When checking several journeys, **Stop** ends there and keeps the figures saved so far, while **Cancel** (or Esc) ends and discards every figure from that run, leaving everything as it was.
 4. The Google figure replaces the app's estimate for that journey's total, the batch and history totals, and copied numbers. The breakdown shows the Google figure with the app's estimate beneath it, and history rows are marked "Google Maps".
 
 To go back to the estimate, right-click the journey or batch and choose **Use This App's Estimate**. **Open in Google Maps** on a saved journey just opens the route without asking for a figure.
@@ -311,7 +331,7 @@ PostcodeDistanceCalculator/
 │   ├── DistanceInput.cs                       # Reads distances typed or pasted from Google Maps
 │   └── BreakdownFormatter.cs                  # Builds the plain-text Journey Breakdown
 ├── Services/
-│   ├── RouteApi.cs                            # Bulk postcode lookup and per-journey OSRM routing, calibration factor
+│   ├── RouteApi.cs                            # Bulk postcode lookup and per-journey OSRM routing, cancellable
 │   ├── RouteLookupException.cs                # Expected lookup/routing failures with user-readable messages
 │   ├── RequestThrottle.cs                     # Keeps OSRM requests at least a second apart
 │   └── HistoryStore.cs                        # Loads/saves history.json next to the executable

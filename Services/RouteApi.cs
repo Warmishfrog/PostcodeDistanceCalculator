@@ -11,16 +11,11 @@ namespace PostcodeDistanceCalculator.Services;
 /// <item><a href="https://postcodes.io">postcodes.io</a> to turn UK postcodes into latitude/longitude, all in one bulk request.</item>
 /// <item><a href="https://project-osrm.org">Project OSRM</a> to get driving distances, one request per journey covering every leg.</item>
 /// </list>
-/// Expected failures throw <see cref="RouteLookupException"/> with a user-readable message.
+/// Expected failures throw <see cref="RouteLookupException"/> with a user-readable message. Cancelling the
+/// <see cref="CancellationToken"/> throws <see cref="OperationCanceledException"/>.
 /// </summary>
 public static class RouteApi
 {
-    /// <summary>
-    /// Multiplier applied to raw OSRM distances so totals roughly match Google Maps / real odometer readings.
-    /// Applied before results are stored, so saved history holds the adjusted figures.
-    /// </summary>
-    public const double CalibrationFactor = 1.07;
-
     /// <summary>postcodes.io accepts at most 100 postcodes per bulk lookup.</summary>
     private const int MaxPostcodesPerLookup = 100;
 
@@ -38,7 +33,7 @@ public static class RouteApi
     /// Postcodes that are no longer in use fall back to their last known location (<see cref="PostcodeLocation.YearTerminated"/> is set).
     /// </summary>
     /// <exception cref="RouteLookupException">Any postcode is unknown or has no map location, or a service fails.</exception>
-    public static async Task<IReadOnlyDictionary<string, PostcodeLocation>> GetLocationsAsync(IEnumerable<string> postcodes)
+    public static async Task<IReadOnlyDictionary<string, PostcodeLocation>> GetLocationsAsync(IEnumerable<string> postcodes, CancellationToken cancellationToken = default)
     {
         var locations = new Dictionary<string, PostcodeLocation>();
         var noLocation = new List<string>();
@@ -47,7 +42,7 @@ public static class RouteApi
         foreach (string[] chunk in postcodes.Distinct().Chunk(MaxPostcodesPerLookup))
         {
             string json = (await SendAsync(
-                () => client.PostAsJsonAsync("https://api.postcodes.io/postcodes", new { postcodes = chunk }), "postcodes.io"))!;
+                () => client.PostAsJsonAsync("https://api.postcodes.io/postcodes", new { postcodes = chunk }, cancellationToken), "postcodes.io", cancellationToken))!;
 
             foreach (var (postcode, exists, location) in ParseBulkLookup(json))
                 Sort(postcode, exists, location);
@@ -56,7 +51,7 @@ public static class RouteApi
         // Not in the current list: check them all against retired postcodes at once (they still have a last known location)
         var candidates = notFound.ToList();
         notFound.Clear();
-        var retired = await Task.WhenAll(candidates.Select(async postcode => (Postcode: postcode, Result: await GetTerminatedLocationAsync(postcode))));
+        var retired = await Task.WhenAll(candidates.Select(async postcode => (Postcode: postcode, Result: await GetTerminatedLocationAsync(postcode, cancellationToken))));
         foreach (var (postcode, (exists, location)) in retired)
             Sort(postcode, exists, location);
 
@@ -79,20 +74,21 @@ public static class RouteApi
     }
 
     /// <summary>
-    /// Raw (uncalibrated) driving distance in metres for each leg of a route through <paramref name="stops"/> in order,
+    /// Driving distance in metres for each leg of a route through <paramref name="stops"/> in order,
     /// using a single OSRM request. Returns <c>stops.Count - 1</c> distances.
     /// </summary>
     /// <exception cref="RouteLookupException">No route exists, or the routing service fails.</exception>
-    public static async Task<IReadOnlyList<double>> GetLegDistancesMetersAsync(IReadOnlyList<PostcodeLocation> stops)
+    public static async Task<IReadOnlyList<double>> GetLegDistancesMetersAsync(IReadOnlyList<PostcodeLocation> stops, CancellationToken cancellationToken = default)
     {
         // CultureInfo.InvariantCulture prevents comma decimal separators (e.g. 51,500 instead of 51.500)
         string coordinates = string.Join(";", stops.Select(s =>
             $"{s.Longitude.ToString(CultureInfo.InvariantCulture)},{s.Latitude.ToString(CultureInfo.InvariantCulture)}"));
 
-        await OsrmThrottle.WaitAsync();
+        await OsrmThrottle.WaitAsync(cancellationToken);
         string json = (await SendAsync(
-            () => client.GetAsync($"https://router.project-osrm.org/route/v1/driving/{coordinates}?overview=false"),
+            () => client.GetAsync($"https://router.project-osrm.org/route/v1/driving/{coordinates}?overview=false", cancellationToken),
             "the routing service (OSRM)",
+            cancellationToken,
             // OSRM reports problems like NoRoute in the JSON body with a 400 status, so let ParseRoute explain them
             acceptBadRequest: true))!;
 
@@ -103,10 +99,10 @@ public static class RouteApi
     /// Looks <paramref name="postcode"/> up in postcodes.io's list of retired postcodes. <c>Exists</c> is false if it was never
     /// a postcode; <c>Location</c> is null if it existed but has no map location.
     /// </summary>
-    private static async Task<(bool Exists, PostcodeLocation? Location)> GetTerminatedLocationAsync(string postcode)
+    private static async Task<(bool Exists, PostcodeLocation? Location)> GetTerminatedLocationAsync(string postcode, CancellationToken cancellationToken)
     {
         string url = $"https://api.postcodes.io/terminated_postcodes/{Uri.EscapeDataString(postcode)}";
-        string? json = await SendAsync(() => client.GetAsync(url), "postcodes.io", notFoundAsNull: true);
+        string? json = await SendAsync(() => client.GetAsync(url, cancellationToken), "postcodes.io", cancellationToken, notFoundAsNull: true);
         if (json == null) return (false, null);
 
         try
@@ -205,14 +201,18 @@ public static class RouteApi
     /// <summary>
     /// Sends a request and returns the response body, turning network errors, timeouts and HTTP errors into
     /// <see cref="RouteLookupException"/>. With <paramref name="notFoundAsNull"/>, a 404 returns null instead;
-    /// otherwise the result is never null.
+    /// otherwise the result is never null. Cancelling <paramref name="cancellationToken"/> throws <see cref="OperationCanceledException"/>.
     /// </summary>
-    private static async Task<string?> SendAsync(Func<Task<HttpResponseMessage>> send, string serviceName, bool notFoundAsNull = false, bool acceptBadRequest = false)
+    private static async Task<string?> SendAsync(Func<Task<HttpResponseMessage>> send, string serviceName, CancellationToken cancellationToken, bool notFoundAsNull = false, bool acceptBadRequest = false)
     {
         HttpResponseMessage response;
         try
         {
             response = await send();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw; // The user cancelled; not a timeout
         }
         catch (HttpRequestException ex)
         {
@@ -231,7 +231,7 @@ public static class RouteApi
             if (!response.IsSuccessStatusCode && !(acceptBadRequest && response.StatusCode == System.Net.HttpStatusCode.BadRequest))
                 throw new RouteLookupException($"{serviceName} error (HTTP {(int)response.StatusCode} {response.ReasonPhrase}). Please try again later.");
 
-            return await response.Content.ReadAsStringAsync();
+            return await response.Content.ReadAsStringAsync(cancellationToken);
         }
     }
 }

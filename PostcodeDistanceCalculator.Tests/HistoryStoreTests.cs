@@ -93,4 +93,33 @@ public sealed class HistoryStoreTests : IDisposable
         Assert.False(File.Exists(HistoryPath));
         Assert.Equal("{ not valid json", File.ReadAllText(backup));
     }
+
+    [Fact]
+    public void Exported_text_imports_back_with_every_leg_and_google_figure()
+    {
+        var batch = new JourneyBatch
+        {
+            CreatedAt = new DateTime(2026, 10, 13, 9, 30, 0),
+            Journeys = [new Journey("21st", "BS15 8DB, BS5 8NG", [new Leg("BS158DB", "BS58NG", 4321.5)]) { GoogleMapsKm = 4.6 }]
+        };
+
+        string text = HistoryStore.ToExport("REPORT FOR PEOPLE", [batch]);
+        var imported = Assert.Single(HistoryStore.ParseExport(text));
+
+        Assert.StartsWith("REPORT FOR PEOPLE", text);
+        Assert.Equal(batch.CreatedAt, imported.CreatedAt);
+        var journey = Assert.Single(imported.Journeys);
+        Assert.Equal("21st", journey.DateTag);
+        Assert.Equal(4.6, journey.GoogleMapsKm);
+        Assert.Equal(new Leg("BS158DB", "BS58NG", 4321.5), Assert.Single(journey.Legs));
+    }
+
+    [Theory]
+    [InlineData("Just some notes, not an export")]
+    [InlineData("REPORT\n" + HistoryStore.ExportDataMarker + "\n[{ edited")]
+    [InlineData("REPORT\n" + HistoryStore.ExportDataMarker + "\n[null]")]
+    public void Text_that_is_not_a_valid_export_is_rejected(string text)
+    {
+        Assert.Throws<InvalidDataException>(() => HistoryStore.ParseExport(text));
+    }
 }
