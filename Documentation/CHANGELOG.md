@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- The README is now a short user guide (download, use, settings). How it works, the APIs and building from source moved to `Documentation/DEVELOPER.md`. The README is back at the repo root so GitHub shows it on the project page.
+
 ## [2.2.0] - 2026-10-13
 
 ### Added
