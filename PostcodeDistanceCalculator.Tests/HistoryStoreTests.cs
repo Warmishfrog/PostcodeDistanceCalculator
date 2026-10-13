@@ -49,6 +49,38 @@ public sealed class HistoryStoreTests : IDisposable
         Assert.Empty(HistoryStore.Load(HistoryPath, out _));
     }
 
+    [Theory]
+    [InlineData("null")]
+    [InlineData("[null]")]
+    [InlineData("""[{"CreatedAt":"2026-10-13T09:30:00","Journeys":null}]""")]
+    [InlineData("""[{"CreatedAt":"2026-10-13T09:30:00","Journeys":[null]}]""")]
+    [InlineData("""[{"CreatedAt":"2026-10-13T09:30:00","Journeys":[{"DateTag":"","RawInput":"a","Legs":null}]}]""")]
+    [InlineData("""[{"CreatedAt":"2026-10-13T09:30:00","Journeys":[{"DateTag":"","RawInput":"a"}]}]""")]
+    [InlineData("""[{"CreatedAt":"2026-10-13T09:30:00","Journeys":[{"DateTag":"","RawInput":"a","Legs":[null]}]}]""")]
+    public void Valid_json_with_invalid_data_is_set_aside(string json)
+    {
+        File.WriteAllText(HistoryPath, json);
+
+        var history = HistoryStore.Load(HistoryPath, out string? backup);
+
+        Assert.Empty(history);
+        Assert.NotNull(backup);
+        Assert.False(File.Exists(HistoryPath));
+    }
+
+    [Fact]
+    public void Repeated_corrupt_files_get_separate_backups()
+    {
+        File.WriteAllText(HistoryPath, "first");
+        HistoryStore.Load(HistoryPath, out string? firstBackup);
+        File.WriteAllText(HistoryPath, "second");
+        HistoryStore.Load(HistoryPath, out string? secondBackup);
+
+        Assert.NotEqual(firstBackup, secondBackup);
+        Assert.Equal("first", File.ReadAllText(firstBackup!));
+        Assert.Equal("second", File.ReadAllText(secondBackup!));
+    }
+
     [Fact]
     public void Corrupt_file_is_set_aside_instead_of_being_overwritten()
     {

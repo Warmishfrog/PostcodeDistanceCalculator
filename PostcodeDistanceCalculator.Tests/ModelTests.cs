@@ -30,13 +30,21 @@ public class ModelTests
     [Fact]
     public void Unit_conversion_and_copy_format()
     {
-        CultureInfo.CurrentCulture = new CultureInfo("en-GB");
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("en-GB");
 
-        Assert.Equal(62.1371, DistanceUnit.Miles.FromKm(100), precision: 4);
-        Assert.Equal(100, DistanceUnit.Kilometers.FromKm(100));
+            Assert.Equal(62.1371, DistanceUnit.Miles.FromKm(100), precision: 4);
+            Assert.Equal(100, DistanceUnit.Kilometers.FromKm(100));
 
-        // Clipboard text is just the number: no label, no unit
-        Assert.Equal("62.1", DistanceUnit.Miles.FormatNumber(100));
-        Assert.Equal("100.0", DistanceUnit.Kilometers.FormatNumber(100));
+            // Clipboard text is just the number: no label, no unit
+            Assert.Equal("62.1", DistanceUnit.Miles.FormatNumber(100));
+            Assert.Equal("100.0", DistanceUnit.Kilometers.FormatNumber(100));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 }

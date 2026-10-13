@@ -28,10 +28,25 @@ public partial class PostcodeDistanceCalculator : Form
     /// <summary>The last calculation, waiting to be saved. Null when the shown journeys are already in history.</summary>
     private JourneyBatch? unsavedBatch;
 
+    /// <summary>
+    /// Set when history.json exists but couldn't be loaded. Saving is then disabled for the session,
+    /// because writing the (empty) in-memory history would overwrite the user's real saved history.
+    /// </summary>
+    private bool historySaveBlocked;
+
+    /// <summary>
+    /// Distinct date tags of the batch most recently loaded from history, when its journeys had different dates.
+    /// Recalculating would give every journey the single date in the Date box, so the user is warned first.
+    /// </summary>
+    private string[]? loadedMixedDates;
+
     /// <summary>Brief popup confirming exactly what was copied to the clipboard.</summary>
     private readonly ToolTip copyToast;
 
     private DistanceUnit Unit => rdoMiles.Checked ? DistanceUnit.Miles : DistanceUnit.Kilometers;
+
+    private double ShownTotalKm => shownJourneys.Sum(j => j.TotalKm);
+    private double HistoryTotalKm => history.Sum(b => b.TotalKm);
 
     public PostcodeDistanceCalculator()
     {
@@ -40,21 +55,14 @@ public partial class PostcodeDistanceCalculator : Form
         copyToast = new ToolTip(components!); // components is created by InitializeComponent and disposes the toast with the form
 
         // Optional date: the hint shows today's date in the expected format
-        txtDate.Text = string.Empty;
         txtDate.PlaceholderText = DateTime.Now.ToString("dd/MM");
 
         this.Load += PostcodeDistanceCalculator_Load;
         txtPostcodes.TextChanged += TxtPostcodes_TextChanged;
 
-        // Make total labels interactive (hand cursor & click to copy)
-        lblJourneyTotal.Cursor = Cursors.Hand;
-        lblHistoryTotal.Cursor = Cursors.Hand;
+        // Click a total label to copy it (hand cursor and Copy button text are set in the Designer)
         lblJourneyTotal.Click += LblJourneyTotal_Click;
         lblHistoryTotal.Click += LblHistoryTotal_Click;
-
-        // Set explicit button text with copy icon
-        btnCopyJourneyTotal.Text = "📋 Copy";
-        btnCopyHistoryTotal.Text = "📋 Copy";
 
         btnAddNew.Enabled = false;
     }
@@ -73,7 +81,12 @@ public partial class PostcodeDistanceCalculator : Form
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show($"Couldn't open saved history at {historyPath}:\n{ex.Message}", "History Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            // The file is still there (e.g. locked by OneDrive or antivirus), so never overwrite it this session
+            historySaveBlocked = true;
+            MessageBox.Show(
+                $"Couldn't open saved history at {historyPath}:\n{ex.Message}\n\n" +
+                "To protect it, nothing will be saved to history this session. Close and reopen the app to try again.",
+                "History Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         RefreshHistoryList();
@@ -89,9 +102,24 @@ public partial class PostcodeDistanceCalculator : Form
             return;
         }
 
+        // Recalculating a reloaded batch applies the one Date box value to every journey
+        if (loadedMixedDates != null)
+        {
+            string newDate = string.IsNullOrWhiteSpace(txtDate.Text) ? "no date" : $"'{txtDate.Text.Trim()}'";
+            if (MessageBox.Show(
+                    $"The loaded batch had different dates per journey ({string.Join(", ", loadedMixedDates.Select(d => d.Length == 0 ? "none" : d))}).\n\n" +
+                    $"Recalculating will give every journey {newDate}. Continue?",
+                    "Journey Dates Will Change", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
+
+            loadedMixedDates = null;
+        }
+
         var parsed = JourneyParser.Parse(rawInput);
         if (parsed.Routes.Count == 0)
         {
+            // Clear the previous results so they aren't left showing (and copyable) next to the error
+            ShowJourneys([], savable: null);
             MessageBox.Show("No valid journeys found. Please ensure each route has at least two postcodes separated by commas.", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             lblStatus.Text = "No valid journeys.";
             return;
@@ -179,7 +207,7 @@ public partial class PostcodeDistanceCalculator : Form
         txtResults.Text = BreakdownFormatter.Format(shownJourneys, Unit);
 
         string title = shownJourneys.Count > 1 ? "Combined" : "Journey";
-        lblJourneyTotal.Text = $"{title} Total: {Unit.FormatNumber(shownJourneys.Sum(j => j.TotalKm))} {Unit.ShortName()}";
+        lblJourneyTotal.Text = $"{title} Total: {Unit.FormatNumber(ShownTotalKm)} {Unit.ShortName()}";
     }
 
     #region History List
@@ -227,7 +255,7 @@ public partial class PostcodeDistanceCalculator : Form
         {
             using var boldFont = new Font(font, FontStyle.Bold);
             e.Graphics.DrawString(
-                $"{batch.CreatedAt:dd/MM/yyyy HH:mm}  ({JourneyCount(batch.Journeys.Count)},{Unit.FormatNumber(batch.TotalKm)} {Unit.ShortName()})",
+                $"{batch.CreatedAt:dd/MM/yyyy HH:mm}  ({JourneyCount(batch.Journeys.Count)}, {Unit.FormatNumber(batch.TotalKm)} {Unit.ShortName()})",
                 boldFont, textBrush, e.Bounds.X + 5, y);
         }
         else if (item is JourneyRow row)
@@ -295,8 +323,12 @@ public partial class PostcodeDistanceCalculator : Form
         if (journeys.Count == 0) return;
 
         txtPostcodes.Text = string.Join(" ; ", journeys.Select(j => j.RawInput));
-        // Restore the date only when every journey shares it (empty string if none had one)
-        txtDate.Text = journeys.Select(j => j.DateTag).Distinct().Count() == 1 ? journeys[0].DateTag : string.Empty;
+
+        // Restore the date only when every journey shares it (empty string if none had one).
+        // Otherwise remember the dates so recalculating can warn that they'll be replaced.
+        string[] dates = journeys.Select(j => j.DateTag).Distinct().ToArray();
+        txtDate.Text = dates.Length == 1 ? dates[0] : string.Empty;
+        loadedMixedDates = dates.Length > 1 ? dates : null;
 
         // Already in history, so nothing to save. Set after the text changes above, which also disable Save.
         ShowJourneys(journeys, savable: null);
@@ -340,9 +372,9 @@ public partial class PostcodeDistanceCalculator : Form
             return;
 
         history.Clear();
-        SaveHistory();
-        RefreshHistoryList();
         lblStatus.Text = "History cleared.";
+        SaveHistory(); // Sets its own status if saving is blocked, so it runs after the success message
+        RefreshHistoryList();
     }
 
     /// <summary>Index of the history row whose delete button is at <paramref name="location"/>, or -1.</summary>
@@ -360,11 +392,17 @@ public partial class PostcodeDistanceCalculator : Form
         => new(itemBounds.Right - 22, itemBounds.Y + 4, 18, 18);
 
     private void RecalculateOverallTotal()
-        => lblHistoryTotal.Text = $"History Total: {Unit.FormatNumber(history.Sum(b => b.TotalKm))} {Unit.ShortName()}";
+        => lblHistoryTotal.Text = $"History Total: {Unit.FormatNumber(HistoryTotalKm)} {Unit.ShortName()}";
 
     /// <summary>Writes history to disk. On failure the in-memory history is kept and the user is told why.</summary>
     private void SaveHistory()
     {
+        if (historySaveBlocked)
+        {
+            lblStatus.Text = "History not saved: the existing history file couldn't be loaded. Restart the app to retry.";
+            return;
+        }
+
         try
         {
             HistoryStore.Save(historyPath, history);
@@ -385,12 +423,12 @@ public partial class PostcodeDistanceCalculator : Form
         if (unsavedBatch != null)
         {
             history.Add(unsavedBatch);
-            SaveHistory();
-            RefreshHistoryList();
-
             lblStatus.Text = unsavedBatch.Journeys.Count > 1
                 ? $"Saved {unsavedBatch.Journeys.Count} journeys to history & cleared."
                 : "Saved to history & cleared.";
+
+            SaveHistory(); // Sets its own status if saving is blocked, so it runs after the success message
+            RefreshHistoryList();
         }
 
         txtPostcodes.Clear();
@@ -418,11 +456,11 @@ public partial class PostcodeDistanceCalculator : Form
     }
 
     #region Copy Event Handlers
-    private void BtnCopyJourneyTotal_Click(object sender, EventArgs e) => CopyDistance(shownJourneys.Sum(j => j.TotalKm), btnCopyJourneyTotal);
-    private void LblJourneyTotal_Click(object? sender, EventArgs e) => CopyDistance(shownJourneys.Sum(j => j.TotalKm), btnCopyJourneyTotal);
+    private void BtnCopyJourneyTotal_Click(object sender, EventArgs e) => CopyDistance(ShownTotalKm, btnCopyJourneyTotal);
+    private void LblJourneyTotal_Click(object? sender, EventArgs e) => CopyDistance(ShownTotalKm, btnCopyJourneyTotal);
 
-    private void BtnCopyHistoryTotal_Click(object sender, EventArgs e) => CopyDistance(history.Sum(b => b.TotalKm), btnCopyHistoryTotal);
-    private void LblHistoryTotal_Click(object? sender, EventArgs e) => CopyDistance(history.Sum(b => b.TotalKm), btnCopyHistoryTotal);
+    private void BtnCopyHistoryTotal_Click(object sender, EventArgs e) => CopyDistance(HistoryTotalKm, btnCopyHistoryTotal);
+    private void LblHistoryTotal_Click(object? sender, EventArgs e) => CopyDistance(HistoryTotalKm, btnCopyHistoryTotal);
 
     /// <summary>
     /// Copies just the number (e.g. "123.4", no label or unit) so it pastes cleanly into a spreadsheet,
@@ -448,7 +486,12 @@ public partial class PostcodeDistanceCalculator : Form
     #endregion
 
     private void TxtPostcodes_TextChanged(object? sender, EventArgs e)
-        => btnAddNew.Enabled = false;
+    {
+        btnAddNew.Enabled = false;
+
+        // Cleared input means the loaded batch is no longer being edited, so no date warning is needed
+        if (txtPostcodes.TextLength == 0) loadedMixedDates = null;
+    }
 
     private void BtnAddNew_EnabledChanged(object sender, EventArgs e)
     {

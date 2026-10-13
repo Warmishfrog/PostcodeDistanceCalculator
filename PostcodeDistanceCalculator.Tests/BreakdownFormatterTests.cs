@@ -4,8 +4,10 @@ using PostcodeDistanceCalculator.Models;
 
 namespace PostcodeDistanceCalculator.Tests;
 
-public class BreakdownFormatterTests
+public sealed class BreakdownFormatterTests : IDisposable
 {
+    private readonly CultureInfo originalCulture = CultureInfo.CurrentCulture;
+
     private static Journey MakeJourney(string dateTag, params double[] legKm)
         => new(dateTag, "raw", legKm.Select((km, i) => new Leg($"P{i}", $"P{i + 1}", km * 1000)).ToList());
 
@@ -14,6 +16,8 @@ public class BreakdownFormatterTests
         // Pin decimal formatting so "12.5" doesn't become "12,5" on other locales
         CultureInfo.CurrentCulture = new CultureInfo("en-GB");
     }
+
+    public void Dispose() => CultureInfo.CurrentCulture = originalCulture;
 
     [Fact]
     public void Single_journey_uses_route_breakdown_heading_and_journey_total()
