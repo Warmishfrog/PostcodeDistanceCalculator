@@ -15,6 +15,5 @@ public sealed class JourneyBatch
     /// <summary>Journeys in the order they were entered. Mutable so single journeys can be deleted from history.</summary>
     public List<Journey> Journeys { get; init; } = [];
 
-    /// <summary>Combined driving distance of every journey in the batch, in kilometres.</summary>
     [JsonIgnore] public double TotalKm => Journeys.Sum(j => j.TotalKm);
 }

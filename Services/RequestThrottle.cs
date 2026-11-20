@@ -13,7 +13,6 @@ public sealed class RequestThrottle(TimeSpan minInterval)
 {
     private long lastRequestTimestamp;
 
-    /// <summary>Waits until at least the minimum interval has passed since the previous call, then records this call.</summary>
     public async Task WaitAsync(CancellationToken cancellationToken = default)
     {
         if (lastRequestTimestamp != 0)

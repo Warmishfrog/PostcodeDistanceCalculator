@@ -41,7 +41,7 @@ public class JourneyParserTests
         try
         {
             CultureInfo.CurrentCulture = new CultureInfo("tr-TR");
-            Assert.Equal("IG11AA", JourneyParser.NormalizePostcode("ig1 1aa"));
+            Assert.Equal("IG11AA", Postcode.Normalize("ig1 1aa"));
         }
         finally
         {
@@ -56,15 +56,6 @@ public class JourneyParserTests
 
         Assert.Equal(2, result.Routes.Count);
         Assert.Equal(["C1 1CC", "D1 1DD"], result.Skipped);
-    }
-
-    [Fact]
-    public void Raw_input_is_kept_per_journey_for_restoring_the_input_box()
-    {
-        var result = JourneyParser.Parse(" a1 1aa, b1 1bb ;c1 1cc,d1 1dd");
-
-        Assert.Equal("a1 1aa, b1 1bb", result.Routes[0].RawInput);
-        Assert.Equal("c1 1cc,d1 1dd", result.Routes[1].RawInput);
     }
 
     [Theory]
@@ -93,7 +84,6 @@ public class DatedLineTests
         Assert.Equal(["BS158DB", "BS58NG", "BS158DB"], result.Routes[0].Postcodes);
         Assert.Equal(["BS158DB", "BS105NB", "BS158DB"], result.Routes[1].Postcodes);
         Assert.Equal(["BS158DB", "BS140SL", "BS158SB"], result.Routes[2].Postcodes);
-        Assert.Equal("21st: BS15 8DB, BS5 8NG, BS15 8DB", result.Routes[0].RawInput);
     }
 
     [Fact]
@@ -120,7 +110,6 @@ public class DatedLineTests
         Assert.Equal([null, "21st", "22nd"], result.Routes.Select(r => r.DateTag));
         Assert.Equal(["A11AA", "B11BB"], result.Routes[0].Postcodes);
         Assert.Equal(["C11CC", "D11DD"], result.Routes[1].Postcodes);
-        Assert.Equal("21st: C1 1CC\r\nD1 1DD", result.Routes[1].RawInput);
     }
 
     [Fact]
@@ -159,8 +148,8 @@ public class DatedLineTests
     {
         var routes = new[]
         {
-            new JourneyParser.ParsedRoute("", ["A11AA", "B11BB"], "21st"),
-            new JourneyParser.ParsedRoute("", ["C11CC", "D11DD"]),
+            new JourneyParser.ParsedRoute(["A11AA", "B11BB"], "21st"),
+            new JourneyParser.ParsedRoute(["C11CC", "D11DD"]),
         };
 
         Assert.Equal(2, JourneyParser.Parse(JourneyParser.Format(routes)).Routes.Count);

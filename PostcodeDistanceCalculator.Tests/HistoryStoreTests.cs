@@ -26,7 +26,7 @@ public sealed class HistoryStoreTests : IDisposable
         var batch = new JourneyBatch
         {
             CreatedAt = createdAt,
-            Journeys = [new Journey("13/10", "SW1A 1AA, M1 1AE", [new Leg("SW1A1AA", "M11AE", 331450.2)])]
+            Journeys = [new Journey("13/10", [new Leg("SW1A1AA", "M11AE", 331450.2)])]
         };
 
         HistoryStore.Save(HistoryPath, [batch]);
@@ -35,7 +35,6 @@ public sealed class HistoryStoreTests : IDisposable
         Assert.Equal(createdAt, loaded.CreatedAt);
         var journey = Assert.Single(loaded.Journeys);
         Assert.Equal("13/10", journey.DateTag);
-        Assert.Equal("SW1A 1AA, M1 1AE", journey.RawInput);
         Assert.Equal(new Leg("SW1A1AA", "M11AE", 331450.2), Assert.Single(journey.Legs));
         Assert.False(File.Exists(HistoryPath + ".tmp"));
     }
@@ -100,7 +99,7 @@ public sealed class HistoryStoreTests : IDisposable
         var batch = new JourneyBatch
         {
             CreatedAt = new DateTime(2026, 10, 13, 9, 30, 0),
-            Journeys = [new Journey("21st", "BS15 8DB, BS5 8NG", [new Leg("BS158DB", "BS58NG", 4321.5)]) { GoogleMapsKm = 4.6 }]
+            Journeys = [new Journey("21st", [new Leg("BS158DB", "BS58NG", 4321.5)]) { GoogleMapsKm = 4.6 }]
         };
 
         string text = HistoryStore.ToExport("REPORT FOR PEOPLE", [batch]);

@@ -22,7 +22,7 @@ public static class RouteApi
     /// <summary>OSRM's public demo server allows at most one request per second, so routing calls are spaced out.</summary>
     private static readonly RequestThrottle OsrmThrottle = new(TimeSpan.FromSeconds(1));
 
-    private static readonly HttpClient client = new()
+    private static readonly HttpClient Client = new()
     {
         Timeout = TimeSpan.FromSeconds(15),
         DefaultRequestHeaders = { { "User-Agent", "WinFormsPostcodeDistanceTool" } }
@@ -42,7 +42,7 @@ public static class RouteApi
         foreach (string[] chunk in postcodes.Distinct().Chunk(MaxPostcodesPerLookup))
         {
             string json = (await SendAsync(
-                () => client.PostAsJsonAsync("https://api.postcodes.io/postcodes", new { postcodes = chunk }, cancellationToken), "postcodes.io", cancellationToken))!;
+                () => Client.PostAsJsonAsync("https://api.postcodes.io/postcodes", new { postcodes = chunk }, cancellationToken), "postcodes.io", cancellationToken))!;
 
             foreach (var (postcode, exists, location) in ParseBulkLookup(json))
                 Sort(postcode, exists, location);
@@ -86,7 +86,7 @@ public static class RouteApi
 
         await OsrmThrottle.WaitAsync(cancellationToken);
         string json = (await SendAsync(
-            () => client.GetAsync($"https://router.project-osrm.org/route/v1/driving/{coordinates}?overview=false", cancellationToken),
+            () => Client.GetAsync($"https://router.project-osrm.org/route/v1/driving/{coordinates}?overview=false", cancellationToken),
             "the routing service (OSRM)",
             cancellationToken,
             // OSRM reports problems like NoRoute in the JSON body with a 400 status, so let ParseRoute explain them
@@ -102,7 +102,7 @@ public static class RouteApi
     private static async Task<(bool Exists, PostcodeLocation? Location)> GetTerminatedLocationAsync(string postcode, CancellationToken cancellationToken)
     {
         string url = $"https://api.postcodes.io/terminated_postcodes/{Uri.EscapeDataString(postcode)}";
-        string? json = await SendAsync(() => client.GetAsync(url, cancellationToken), "postcodes.io", cancellationToken, notFoundAsNull: true);
+        string? json = await SendAsync(() => Client.GetAsync(url, cancellationToken), "postcodes.io", cancellationToken, notFoundAsNull: true);
         if (json == null) return (false, null);
 
         try

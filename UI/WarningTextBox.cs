@@ -6,7 +6,6 @@ namespace PostcodeDistanceCalculator.UI;
 /// </summary>
 internal sealed class WarningTextBox : TextBox
 {
-    /// <summary>A range of text to underline and the message to show for it.</summary>
     public sealed record TextWarning(int Start, int Length, string Message);
 
     /// <summary>Amber: noticeable without looking like an error.</summary>
@@ -18,7 +17,6 @@ internal sealed class WarningTextBox : TextBox
     private IReadOnlyList<TextWarning> warnings = [];
     private TextWarning? hovered;
 
-    /// <summary>Ranges to underline. Setting this redraws the box. Set from code only, never by the designer.</summary>
     [System.ComponentModel.Browsable(false)]
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     public IReadOnlyList<TextWarning> Warnings
@@ -63,7 +61,6 @@ internal sealed class WarningTextBox : TextBox
         }
     }
 
-    /// <summary>Draws a wavy line from <paramref name="left"/> to <paramref name="right"/> around <paramref name="baseline"/>.</summary>
     internal static void DrawSquiggle(Graphics graphics, Pen pen, int left, int right, int baseline, int amplitude, int step)
     {
         var points = new List<Point>();
@@ -115,7 +112,6 @@ internal sealed class WarningTextBox : TextBox
         tooltip.Hide(this);
     }
 
-    /// <summary>The warning whose underlined text is under <paramref name="point"/>, if any.</summary>
     private TextWarning? WarningAt(Point point)
     {
         if (warnings.Count == 0 || TextLength == 0) return null;

@@ -6,7 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- **Undo** under the history list brings back the rows you just deleted, or everything after **Clear**.
+- **Load into Postcode Box** in the history right-click menu.
+
 ### Changed
+- History rows load on double-click or Enter instead of a single click, and ask first if they would replace postcodes you haven't saved. A single click now only selects, so it can't wipe what you've typed.
+- Deleting history rows no longer asks for confirmation, since Undo brings them back. **Clear** still asks.
+- Skipped journeys and retired postcodes are listed under **Notes** at the end of the breakdown instead of in pop-ups.
+- **Calculate Route** is greyed out while the postcode box is empty, instead of showing an error.
+- **+ Save to History** is now **Save and Clear**, saying what it does.
+- The postcode box hint leads with the simple case: postcodes one per line or separated by commas.
+- **Estimate vs Google** only appears once a journey has been checked against Google Maps.
+- Code tidy-up: the main window is split into `MainForm`, `HistoryListBox` and `JourneyHistory`; postcode matching lives in one `Postcode` class; comments that only restated the code are removed.
 - The README is now a short user guide (download, use, settings). How it works, the APIs and building from source moved to `Documentation/DEVELOPER.md`. The README is back at the repo root so GitHub shows it on the project page.
 
 ## [2.2.0] - 2026-10-13

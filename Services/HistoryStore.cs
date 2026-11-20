@@ -19,7 +19,6 @@ public static class HistoryStore
         RespectRequiredConstructorParameters = true
     };
 
-    /// <summary><c>history.json</c> in the folder containing the executable.</summary>
     public static string DefaultPath => Path.Combine(AppContext.BaseDirectory, "history.json");
 
     /// <summary>
@@ -60,7 +59,6 @@ public static class HistoryStore
     private static bool IsValid(List<JourneyBatch> batches)
         => batches.All(b => b != null && b.Journeys.All(j => j != null && j.Legs.All(l => l != null)));
 
-    /// <summary><c>history.corrupt-{timestamp}.json</c> beside <paramref name="path"/>, numbered if that name is taken.</summary>
     private static string UniqueBackupPath(string path)
     {
         string folder = Path.GetDirectoryName(path) ?? ".";

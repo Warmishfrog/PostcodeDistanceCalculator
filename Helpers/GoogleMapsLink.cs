@@ -7,7 +7,7 @@ namespace PostcodeDistanceCalculator.Helpers;
 /// </summary>
 public static class GoogleMapsLink
 {
-    /// <summary>Google Maps on a desktop browser supports up to 9 stops between the start and the end.</summary>
+    /// <summary>Origin + 9 waypoints + destination: the most a desktop Google Maps URL accepts.</summary>
     public const int MaxStops = 11;
 
     /// <summary>
@@ -18,7 +18,7 @@ public static class GoogleMapsLink
     {
         if (postcodes.Count < 2 || postcodes.Count > MaxStops) return null;
 
-        string Param(string postcode) => Uri.EscapeDataString(FormatPostcode(postcode) + ", UK");
+        string Param(string postcode) => Uri.EscapeDataString(Postcode.Format(postcode) + ", UK");
 
         string url = "https://www.google.com/maps/dir/?api=1" +
             $"&origin={Param(postcodes[0])}" +
@@ -30,11 +30,4 @@ public static class GoogleMapsLink
 
         return new Uri(url);
     }
-
-    /// <summary>
-    /// Puts back the space before the 3-character inward code that normalisation removed,
-    /// e.g. "SW1A1AA" becomes "SW1A 1AA", so Google recognises it as a postcode.
-    /// </summary>
-    public static string FormatPostcode(string postcode)
-        => postcode.Length > 3 && !postcode.Contains(' ') ? $"{postcode[..^3]} {postcode[^3..]}" : postcode;
 }

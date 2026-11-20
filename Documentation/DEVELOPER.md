@@ -2,7 +2,7 @@
 
 How UK Postcode Distance Calculator works and how to build it. For using the app, see the [README](../README.md).
 
-It's a .NET 10 Windows Forms app with no NuGet dependencies beyond the test project. Each class has XML doc comments describing its role.
+It's a .NET 10 Windows Forms app with no NuGet dependencies beyond the test project. Comments explain why, not what; the names should say what.
 
 ## How it works
 
@@ -30,11 +30,10 @@ Both are free, need no key, and are called over HTTPS with a 15 second timeout.
 ## Project structure
 
 ```text
-UI/                      Main form, its designer file, verify dialog, icon font, warning text box
-Models/                  Leg, Journey, JourneyBatch, DistanceUnit, PostcodeLocation
-Helpers/                 Input parsing, breakdown text, Google Maps links, typo warnings, distance input
+UI/                      Main form, history list, verify dialog, icon font, warning text box
+Models/                  Leg, Journey, JourneyBatch, JourneyHistory (edits and undo), DistanceUnit, PostcodeLocation
+Helpers/                 Postcode format, input parsing, breakdown text, Google Maps links, typo warnings, distance input
 Services/                API calls, request throttle, history and settings files
-Extensions/              Unit conversion and formatting
 Resources/               Material Symbols icon subset and app icon, embedded in the exe
 PostcodeDistanceCalculator.Tests/   xUnit tests (no live API calls)
 Documentation/           This guide and the changelog (README.md is at the root)

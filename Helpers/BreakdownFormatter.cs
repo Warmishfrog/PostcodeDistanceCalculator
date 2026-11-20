@@ -1,4 +1,3 @@
-using PostcodeDistanceCalculator.Extensions;
 using PostcodeDistanceCalculator.Models;
 
 namespace PostcodeDistanceCalculator.Helpers;
@@ -12,7 +11,6 @@ public static class BreakdownFormatter
 {
     private const int RuleWidth = 45;
 
-    /// <summary>Warning shown under any journey total that uses a figure read from Google Maps.</summary>
     public const string GoogleMapsCaveat = "Google Maps distances can change with circumstances such as traffic, roadworks or closures.";
 
     /// <summary>Formats <paramref name="journeys"/> in <paramref name="unit"/>. Returns an empty string for no journeys.</summary>
@@ -97,18 +95,13 @@ public static class BreakdownFormatter
         return string.Join(Environment.NewLine, lines);
     }
 
-    /// <summary>
-    /// Formats saved history as a plain-text report for exporting: each batch with its date and breakdown,
-    /// then the overall total.
-    /// </summary>
     public static string FormatHistory(IReadOnlyList<JourneyBatch> batches, DistanceUnit unit, DateTime exportedAt)
     {
         var lines = new List<string> { $"POSTCODE DISTANCE CALCULATOR - SAVED HISTORY (exported {exportedAt:dd/MM/yyyy HH:mm})", string.Empty };
 
         foreach (var batch in batches)
         {
-            string journeys = batch.Journeys.Count == 1 ? "1 journey" : $"{batch.Journeys.Count} journeys";
-            lines.Add($"BATCH: {batch.CreatedAt:dd/MM/yyyy HH:mm} ({journeys})");
+            lines.Add($"BATCH: {batch.CreatedAt:dd/MM/yyyy HH:mm} ({JourneyCount(batch.Journeys.Count)})");
             lines.Add(new string('═', RuleWidth));
             lines.Add(Format(batch.Journeys, unit));
             lines.Add(string.Empty);
@@ -119,4 +112,6 @@ public static class BreakdownFormatter
         lines.Add($"  HISTORY TOTAL: {unit.FormatNumber(batches.Sum(b => b.TotalKm))} {unit.LongName().ToUpperInvariant()}");
         return string.Join(Environment.NewLine, lines);
     }
+
+    public static string JourneyCount(int count) => count == 1 ? "1 journey" : $"{count} journeys";
 }

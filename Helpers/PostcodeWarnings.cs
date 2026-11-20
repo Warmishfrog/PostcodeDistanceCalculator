@@ -19,7 +19,7 @@ public static partial class PostcodeWarnings
     /// <summary>A text range in the input box holding one postcode (or something that should have been one).</summary>
     /// <param name="Start">Index of the first character.</param>
     /// <param name="Length">Number of characters.</param>
-    /// <param name="Postcode">The text normalised with <see cref="JourneyParser.NormalizePostcode"/>.</param>
+    /// <param name="Postcode">The text normalised with <see cref="Helpers.Postcode.Normalize"/>.</param>
     public sealed record PostcodeSpan(int Start, int Length, string Postcode);
 
     [GeneratedRegex("^[A-Z]{1,2}[0-9][A-Z0-9]?[0-9][A-Z]{2}$")]
@@ -28,12 +28,6 @@ public static partial class PostcodeWarnings
     /// <summary>The last two letters (the unit) never use these.</summary>
     private const string UnusedUnitLetters = "CIKMOV";
 
-    [GeneratedRegex(@"[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2}", RegexOptions.IgnoreCase)]
-    private static partial Regex PostcodeInText();
-
-    [GeneratedRegex(@"^(\s*[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2})+\s*$", RegexOptions.IgnoreCase)]
-    private static partial Regex PostcodeRun();
-
     /// <summary>Text between commas, semicolons and line breaks.</summary>
     [GeneratedRegex(@"[^,;\r\n]+")]
     private static partial Regex Token();
@@ -41,7 +35,6 @@ public static partial class PostcodeWarnings
     private static readonly string[] KeyboardRows = ["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
     private static readonly string[] LookAlikes = ["O0", "I1", "L1", "S5", "B8", "Z2", "G6"];
 
-    /// <summary>How often each normalised postcode appears in <paramref name="postcodes"/>.</summary>
     public static Dictionary<string, int> CountUsage(IEnumerable<string> postcodes)
         => postcodes.GroupBy(p => p).ToDictionary(g => g.Key, g => g.Count());
 
@@ -64,7 +57,7 @@ public static partial class PostcodeWarnings
             .Select(u => u.Key)
             .FirstOrDefault();
 
-        return likely == null ? null : $"Possible typo: did you mean {GoogleMapsLink.FormatPostcode(likely)}? It's used more often.";
+        return likely == null ? null : $"Possible typo: did you mean {Postcode.Format(likely)}? It's used more often.";
     }
 
     /// <summary>
@@ -87,14 +80,14 @@ public static partial class PostcodeWarnings
             string trimmed = body.Trim();
             if (trimmed.Length == 0) continue;
 
-            if (PostcodeRun().IsMatch(trimmed))
+            if (Postcode.RunTogether().IsMatch(trimmed))
             {
-                foreach (Match postcode in PostcodeInText().Matches(trimmed))
-                    spans.Add(new PostcodeSpan(trimmedStart + postcode.Index, postcode.Length, JourneyParser.NormalizePostcode(postcode.Value)));
+                foreach (Match match in Postcode.InText().Matches(trimmed))
+                    spans.Add(new PostcodeSpan(trimmedStart + match.Index, match.Length, Postcode.Normalize(match.Value)));
             }
             else
             {
-                spans.Add(new PostcodeSpan(trimmedStart, trimmed.Length, JourneyParser.NormalizePostcode(trimmed)));
+                spans.Add(new PostcodeSpan(trimmedStart, trimmed.Length, Postcode.Normalize(trimmed)));
             }
         }
         return spans;
