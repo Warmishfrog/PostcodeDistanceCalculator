@@ -53,12 +53,19 @@ dotnet test
 
 Or open `PostcodeDistanceCalculator.slnx` in Visual Studio and press F5.
 
+## Branches
+
+- `dev` is where work happens. Branch features off it and PR them back into `dev`.
+- `master` only gets releases: PR `dev` into it when it's ready to ship.
+- Every release on `master` is tagged (e.g. `2.3.0`) and has the exe on GitHub.
+
 ## Releasing
 
-1. Update `<Version>` in `PostcodeDistanceCalculator.csproj` (shown in the exe's properties and the Help dialog) and date the Unreleased section of [CHANGELOG.md](CHANGELOG.md).
-2. Build the single-file exe, which includes .NET so users don't need it installed:
+1. On `dev`, bump `<Version>` in `PostcodeDistanceCalculator.csproj` (shown in the exe's properties and the Help dialog) and date the Unreleased section of [CHANGELOG.md](CHANGELOG.md).
+2. PR `dev` into `master` and merge it.
+3. From `master`, build the single-file exe, which includes .NET so users don't need it installed:
    ```powershell
    dotnet publish PostcodeDistanceCalculator.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
    ```
    Output: `bin/Release/net10.0-windows/win-x64/publish/PostcodeDistanceCalculator.exe`
-3. Tag the commit with the version and attach the exe to a GitHub release.
+4. Tag the merge commit with the version and attach the exe to a GitHub release.
