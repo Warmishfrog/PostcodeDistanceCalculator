@@ -26,18 +26,10 @@ public static partial class JourneyParser
     [GeneratedRegex(@"^\s*(?<date>[^,:]{1,20}?)\s*:(?<rest>.*)$", RegexOptions.Singleline)]
     private static partial Regex DateLabel();
 
-    /// <summary>One or more full UK postcodes and nothing else.</summary>
-    [GeneratedRegex(@"^(\s*[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2})+\s*$", RegexOptions.IgnoreCase)]
-    private static partial Regex PostcodeRun();
-
-    [GeneratedRegex(@"[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2}", RegexOptions.IgnoreCase)]
-    private static partial Regex Postcode();
-
     /// <summary>One routable journey from the input.</summary>
-    /// <param name="RawInput">The journey's original text (including any date label), kept so it can be restored into the input box.</param>
     /// <param name="Postcodes">Normalised postcodes in travel order (at least two).</param>
     /// <param name="DateTag">The journey's own date label, or null to use the Date box.</param>
-    public sealed record ParsedRoute(string RawInput, IReadOnlyList<string> Postcodes, string? DateTag = null);
+    public sealed record ParsedRoute(IReadOnlyList<string> Postcodes, string? DateTag = null);
 
     /// <summary>Result of <see cref="Parse"/>.</summary>
     /// <param name="Routes">Journeys with two or more postcodes, in input order.</param>
@@ -62,12 +54,12 @@ public static partial class JourneyParser
             }
 
             string[] tokens = body.Split(PostcodeSeparators, SplitOptions);
-            var postcodes = tokens.SelectMany(SplitRunTogether).Select(NormalizePostcode).Where(p => p.Length > 0).ToList();
+            var postcodes = tokens.SelectMany(SplitRunTogether).Select(Postcode.Normalize).Where(p => p.Length > 0).ToList();
 
             if (postcodes.Count < 2)
                 skipped.Add(dateTag == null ? string.Join(", ", tokens) : $"{dateTag}: {string.Join(", ", tokens)}");
             else
-                routes.Add(new ParsedRoute(segment, postcodes, dateTag));
+                routes.Add(new ParsedRoute(postcodes, dateTag));
         }
 
         return new ParseResult(routes, skipped);
@@ -90,10 +82,9 @@ public static partial class JourneyParser
         return text.ToString();
     }
 
-    /// <summary>One journey as tidy input text, e.g. <c>21st: BS15 8DB, BS5 8NG</c>.</summary>
-    public static string FormatRoute(ParsedRoute route)
+    private static string FormatRoute(ParsedRoute route)
     {
-        string postcodes = string.Join(", ", route.Postcodes.Select(GoogleMapsLink.FormatPostcode));
+        string postcodes = string.Join(", ", route.Postcodes.Select(Postcode.Format));
         return route.DateTag == null ? postcodes : $"{route.DateTag}: {postcodes}";
     }
 
@@ -121,12 +112,5 @@ public static partial class JourneyParser
     /// Anything else is returned unchanged so a typo is still reported as an unknown postcode.
     /// </summary>
     private static IEnumerable<string> SplitRunTogether(string token)
-        => PostcodeRun().IsMatch(token) ? Postcode().Matches(token).Select(m => m.Value) : [token];
-
-    /// <summary>
-    /// Removes all whitespace (including tabs and non-breaking spaces pasted from spreadsheets)
-    /// and upper-cases using the invariant culture, e.g. "sw1a 1aa" becomes "SW1A1AA".
-    /// </summary>
-    public static string NormalizePostcode(string postcode)
-        => string.Concat(postcode.Where(c => !char.IsWhiteSpace(c))).ToUpperInvariant();
+        => Postcode.RunTogether().IsMatch(token) ? Postcode.InText().Matches(token).Select(m => m.Value) : [token];
 }

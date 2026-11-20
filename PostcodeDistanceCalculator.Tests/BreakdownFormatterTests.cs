@@ -9,7 +9,7 @@ public sealed class BreakdownFormatterTests : IDisposable
     private readonly CultureInfo originalCulture = CultureInfo.CurrentCulture;
 
     private static Journey MakeJourney(string dateTag, params double[] legKm)
-        => new(dateTag, "raw", legKm.Select((km, i) => new Leg($"P{i}", $"P{i + 1}", km * 1000)).ToList());
+        => new(dateTag, legKm.Select((km, i) => new Leg($"P{i}", $"P{i + 1}", km * 1000)).ToList());
 
     public BreakdownFormatterTests()
     {

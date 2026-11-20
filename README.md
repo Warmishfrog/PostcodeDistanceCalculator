@@ -34,7 +34,7 @@ Adding up a month's mileage:
    21st: BS15 8DB, BS5 8NG, BS4 3LF, BS15 8DB
    22nd: BS15 8DB, BS4 4PR, BS15 8DB
    ```
-2. Click **Calculate Route** (or press Ctrl+Enter), check the breakdown, then click **+ Save to History**.
+2. Click **Calculate Route** (or press Ctrl+Enter), check the breakdown, then click **Save and Clear**.
 3. Repeat through the month.
 4. At month end, click **Copy** next to **History Total**. Only the number is copied (e.g. `412.6`), ready to paste.
 5. Click **Export** to keep a copy, then **Clear** to start the next month.
@@ -52,6 +52,7 @@ Adding up a month's mileage:
 - Capitals and spaces don't matter, and postcodes missing a comma between them are split apart.
 - Postcodes that look like typos get an amber wavy underline. Hover over it to see why. They're only warnings: a real postcode still calculates.
 - While it's calculating, **Calculate Route** becomes **Cancel**.
+- Skipped journeys (fewer than two postcodes) and retired postcodes are listed under **Notes** at the end of the breakdown.
 
 ## Settings
 
@@ -60,7 +61,7 @@ All settings are in the window and are remembered between runs:
 - **Miles / Km**: switches every distance shown, including history.
 - **Compact**: shows each journey's route on one line, e.g. `BS158DB  ->  BS58NG (0.7 mi), BS58NG  ->  BS43LF (3.4 mi)`, which is easy to copy.
 - **Leg distances**: shows or hides the distance of each leg.
-- **Estimate vs Google**: on journeys checked against Google Maps, also shows this app's own figure.
+- **Estimate vs Google**: on journeys checked against Google Maps, also shows this app's own figure. Only appears once a journey has been checked.
 
 You can also drag the dotted bars between the boxes to resize them, and the chevron at the top right hides the history panel. These aren't remembered.
 
@@ -73,12 +74,12 @@ Files kept next to the exe:
 
 ## History
 
-- **+ Save to History** saves the current journeys as one batch, stamped with the date and time.
-- Click a batch header to load all its journeys, or a journey to load just that one.
-- Click the red cross on a row, or select it and press **Delete**, to remove it.
+- **Save and Clear** saves the current journeys as one batch, stamped with the date and time, and empties the boxes for the next one.
+- Double-click a batch header (or select it and press Enter) to load all its journeys, or a journey to load just that one. If that would replace postcodes you haven't saved, it asks first.
+- Click the red cross on a row, or select it and press **Delete**, to remove it. **Undo** below the list brings it back.
 - Ctrl+click or Shift+click to select several rows, then right-click for options.
 - **Export** saves everything to a readable `.txt` file. **Import** adds an exported file back in, skipping anything already there.
-- **Clear** deletes all history (after asking).
+- **Clear** deletes all history (after asking). **Undo** brings it back.
 
 ## Checking against Google Maps
 

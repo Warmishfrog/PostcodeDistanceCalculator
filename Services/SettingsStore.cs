@@ -17,7 +17,6 @@ public sealed record AppSettings(
 /// </summary>
 public static class SettingsStore
 {
-    /// <summary><c>settings.json</c> in the folder containing the executable.</summary>
     public static string DefaultPath => Path.Combine(AppContext.BaseDirectory, "settings.json");
 
     public static AppSettings Load(string path)

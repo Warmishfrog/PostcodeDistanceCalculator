@@ -1,5 +1,4 @@
 using System.Globalization;
-using PostcodeDistanceCalculator.Extensions;
 using PostcodeDistanceCalculator.Models;
 
 namespace PostcodeDistanceCalculator.Tests;
@@ -7,12 +6,11 @@ namespace PostcodeDistanceCalculator.Tests;
 public class ModelTests
 {
     [Fact]
-    public void Journey_totals_and_first_postcode_are_derived_from_legs()
+    public void Journey_total_is_derived_from_legs()
     {
-        var journey = new Journey("", "raw", [new Leg("A", "B", 1500), new Leg("B", "C", 2500)]);
+        var journey = new Journey("", [new Leg("A", "B", 1500), new Leg("B", "C", 2500)]);
 
         Assert.Equal(4.0, journey.TotalKm, precision: 9);
-        Assert.Equal("A", journey.FirstPostcode);
     }
 
     [Fact]
@@ -21,7 +19,7 @@ public class ModelTests
         var batch = new JourneyBatch
         {
             CreatedAt = DateTime.Now,
-            Journeys = [new Journey("", "a", [new Leg("A", "B", 1000)]), new Journey("", "b", [new Leg("C", "D", 3000)])]
+            Journeys = [new Journey("", [new Leg("A", "B", 1000)]), new Journey("", [new Leg("C", "D", 3000)])]
         };
 
         Assert.Equal(4.0, batch.TotalKm, precision: 9);

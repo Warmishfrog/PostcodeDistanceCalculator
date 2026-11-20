@@ -1,6 +1,6 @@
 namespace PostcodeDistanceCalculator.UI;
 
-partial class PostcodeDistanceCalculator
+partial class MainForm
 {
     /// <summary>
     ///  Required designer variable.
@@ -44,7 +44,7 @@ partial class PostcodeDistanceCalculator
         rdoKm = new RadioButton();
         rdoMiles = new RadioButton();
         btnCalculate = new Button();
-        btnAddNew = new Button();
+        btnSave = new Button();
         lblBreakdownHeader = new Label();
         flowBreakdownOptions = new FlowLayoutPanel();
         chkCompact = new CheckBox();
@@ -58,7 +58,8 @@ partial class PostcodeDistanceCalculator
         lblStatus = new Label();
         btnReopenHistory = new Button();
         lblHistoryHeader = new Label();
-        lstHistory = new ListBox();
+        lstHistory = new HistoryListBox();
+        lnkUndo = new LinkLabel();
         lblHistoryTotal = new Label();
         btnCopyHistoryTotal = new Button();
         btnImportHistory = new Button();
@@ -67,6 +68,7 @@ partial class PostcodeDistanceCalculator
         btnToggleHistory = new Button();
         toolTipInput = new ToolTip(components);
         mnuHistory = new ContextMenuStrip(components);
+        mnuLoad = new ToolStripMenuItem();
         mnuVerify = new ToolStripMenuItem();
         mnuOpenInMaps = new ToolStripMenuItem();
         mnuUseEstimate = new ToolStripMenuItem();
@@ -143,6 +145,7 @@ partial class PostcodeDistanceCalculator
         splitContainer.Panel2.Controls.Add(lblHistoryHeader);
         splitContainer.Panel2.Controls.Add(lstHistory);
         splitContainer.Panel2.Controls.Add(lblHistoryTotal);
+        splitContainer.Panel2.Controls.Add(lnkUndo);
         splitContainer.Panel2.Controls.Add(btnCopyHistoryTotal);
         splitContainer.Panel2.Controls.Add(btnImportHistory);
         splitContainer.Panel2.Controls.Add(btnExportHistory);
@@ -174,7 +177,7 @@ partial class PostcodeDistanceCalculator
         splitContainerLeft.Panel1.Controls.Add(txtDate);
         splitContainerLeft.Panel1.Controls.Add(grpUnits);
         splitContainerLeft.Panel1.Controls.Add(btnCalculate);
-        splitContainerLeft.Panel1.Controls.Add(btnAddNew);
+        splitContainerLeft.Panel1.Controls.Add(btnSave);
         splitContainerLeft.Panel1MinSize = 120;
         //
         // splitContainerLeft.Panel2
@@ -241,7 +244,7 @@ partial class PostcodeDistanceCalculator
         txtPostcodes.Location = new Point(15, 31);
         txtPostcodes.Multiline = true;
         txtPostcodes.Name = "txtPostcodes";
-        txtPostcodes.PlaceholderText = "One journey:  SW1A 1AA, M1 1AE, EH1 1YZ\r\nSeveral journeys:  SW1A 1AA, M1 1AE ; B1 1AA, LS1 1UR\r\nDated journeys, one per line:  21st: BS15 8DB, BS5 8NG\r\nPostcodes can also go one per line.";
+        txtPostcodes.PlaceholderText = "Paste or type postcodes, one per line or separated by commas:\r\nBS15 8DB, BS5 8NG, BS4 4PR\r\n\r\nSeveral journeys? Put ; between them, or see Help.";
         txtPostcodes.ScrollBars = ScrollBars.Vertical;
         txtPostcodes.Size = new Size(385, 105);
         txtPostcodes.TabIndex = 2;
@@ -327,22 +330,22 @@ partial class PostcodeDistanceCalculator
         btnCalculate.UseVisualStyleBackColor = false;
         btnCalculate.Click += BtnCalculate_Click;
         //
-        // btnAddNew
+        // btnSave
         //
-        btnAddNew.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-        btnAddNew.BackColor = Color.FromArgb(226, 232, 240);
-        btnAddNew.FlatAppearance.BorderSize = 0;
-        btnAddNew.FlatStyle = FlatStyle.Flat;
-        btnAddNew.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-        btnAddNew.ForeColor = Color.FromArgb(51, 65, 85);
-        btnAddNew.Location = new Point(215, 144);
-        btnAddNew.Name = "btnAddNew";
-        btnAddNew.Size = new Size(165, 32);
-        btnAddNew.TabIndex = 7;
-        btnAddNew.Text = "+ Save to History";
-        btnAddNew.UseVisualStyleBackColor = false;
-        btnAddNew.EnabledChanged += BtnAddNew_EnabledChanged;
-        btnAddNew.Click += BtnAddNew_Click;
+        btnSave.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+        btnSave.BackColor = Color.FromArgb(226, 232, 240);
+        btnSave.FlatAppearance.BorderSize = 0;
+        btnSave.FlatStyle = FlatStyle.Flat;
+        btnSave.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        btnSave.ForeColor = Color.FromArgb(51, 65, 85);
+        btnSave.Location = new Point(215, 144);
+        btnSave.Name = "btnSave";
+        btnSave.Size = new Size(165, 32);
+        btnSave.TabIndex = 7;
+        btnSave.Text = "Save and Clear";
+        btnSave.UseVisualStyleBackColor = false;
+        btnSave.EnabledChanged += BtnSave_EnabledChanged;
+        btnSave.Click += BtnSave_Click;
         //
         // lblBreakdownHeader
         //
@@ -537,21 +540,29 @@ partial class PostcodeDistanceCalculator
         lstHistory.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         lstHistory.BorderStyle = BorderStyle.FixedSingle;
         lstHistory.ContextMenuStrip = mnuHistory;
-        lstHistory.DrawMode = DrawMode.OwnerDrawFixed;
         lstHistory.Font = new Font("Segoe UI", 9F);
         lstHistory.FormattingEnabled = true;
-        lstHistory.IntegralHeight = false;
         lstHistory.ItemHeight = 26;
         lstHistory.Location = new Point(10, 35);
         lstHistory.Name = "lstHistory";
-        lstHistory.SelectionMode = SelectionMode.MultiExtended;
         lstHistory.Size = new Size(305, 431);
         lstHistory.TabIndex = 1;
-        lstHistory.DrawItem += LstHistory_DrawItem;
-        lstHistory.Format += LstHistory_Format;
-        lstHistory.SelectedIndexChanged += LstHistory_SelectedIndexChanged;
-        lstHistory.KeyDown += LstHistory_KeyDown;
-        lstHistory.MouseDown += LstHistory_MouseDown;
+        toolTipInput.SetToolTip(lstHistory, "Double-click a row to load it. Right-click for more.");
+        //
+        // lnkUndo
+        //
+        lnkUndo.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+        lnkUndo.AutoSize = true;
+        lnkUndo.Font = new Font("Segoe UI", 9F);
+        lnkUndo.Location = new Point(200, 482);
+        lnkUndo.Name = "lnkUndo";
+        lnkUndo.Size = new Size(36, 15);
+        lnkUndo.TabIndex = 8;
+        lnkUndo.TabStop = true;
+        lnkUndo.Text = "Undo";
+        toolTipInput.SetToolTip(lnkUndo, "Bring back what you just deleted");
+        lnkUndo.Visible = false;
+        lnkUndo.LinkClicked += LnkUndo_LinkClicked;
         //
         // lblHistoryTotal
         //
@@ -654,10 +665,18 @@ partial class PostcodeDistanceCalculator
         // 
         // mnuHistory
         // 
-        mnuHistory.Items.AddRange(new ToolStripItem[] { mnuVerify, mnuOpenInMaps, mnuUseEstimate });
+        mnuHistory.Items.AddRange(new ToolStripItem[] { mnuLoad, mnuVerify, mnuOpenInMaps, mnuUseEstimate });
         mnuHistory.Name = "mnuHistory";
-        mnuHistory.Size = new Size(260, 70);
+        mnuHistory.Size = new Size(260, 92);
         mnuHistory.Opening += MnuHistory_Opening;
+        // 
+        // mnuLoad
+        // 
+        mnuLoad.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        mnuLoad.Name = "mnuLoad";
+        mnuLoad.Size = new Size(259, 22);
+        mnuLoad.Text = "Load into Postcode Box";
+        mnuLoad.Click += MnuLoad_Click;
         // 
         // mnuVerify
         // 
@@ -680,7 +699,7 @@ partial class PostcodeDistanceCalculator
         mnuUseEstimate.Text = "Use This App's Estimate";
         mnuUseEstimate.Click += MnuUseEstimate_Click;
         //
-        // PostcodeDistanceCalculator
+        // MainForm
         //
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
@@ -689,7 +708,7 @@ partial class PostcodeDistanceCalculator
         Controls.Add(splitContainer);
         Controls.Add(panelHeader);
         MinimumSize = new Size(720, 520);
-        Name = "PostcodeDistanceCalculator";
+        Name = "MainForm";
         StartPosition = FormStartPosition.CenterScreen;
         Text = "UK Postcode Distance Calculator";
         panelHeader.ResumeLayout(false);
@@ -734,7 +753,7 @@ partial class PostcodeDistanceCalculator
     private RadioButton rdoMiles;
     private RadioButton rdoKm;
     private Button btnCalculate;
-    private Button btnAddNew;
+    private Button btnSave;
     private Label lblBreakdownHeader;
     private FlowLayoutPanel flowBreakdownOptions;
     private CheckBox chkCompact;
@@ -746,6 +765,7 @@ partial class PostcodeDistanceCalculator
     private Button btnCopyJourneyTotal;
     private Button btnVerifyJourney;
     private ContextMenuStrip mnuHistory;
+    private ToolStripMenuItem mnuLoad;
     private ToolStripMenuItem mnuVerify;
     private ToolStripMenuItem mnuOpenInMaps;
     private ToolStripMenuItem mnuUseEstimate;
@@ -755,7 +775,8 @@ partial class PostcodeDistanceCalculator
     private Button btnImportHistory;
     private Button btnExportHistory;
     private Button btnClearHistory;
-    private ListBox lstHistory;
+    private HistoryListBox lstHistory;
+    private LinkLabel lnkUndo;
     private Label lblHistoryTotal;
     private Button btnCopyHistoryTotal;
 }

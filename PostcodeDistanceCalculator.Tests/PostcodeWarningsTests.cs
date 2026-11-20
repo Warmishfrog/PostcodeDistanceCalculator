@@ -66,6 +66,6 @@ public class PostcodeWarningsTests
         var spans = PostcodeWarnings.FindInInput(text);
 
         Assert.Equal(["BS158DB", "BS58NG", "BS140SL", "BS158SB", "OOPS"], spans.Select(s => s.Postcode));
-        Assert.All(spans, s => Assert.Equal(s.Postcode, JourneyParser.NormalizePostcode(text.Substring(s.Start, s.Length))));
+        Assert.All(spans, s => Assert.Equal(s.Postcode, Postcode.Normalize(text.Substring(s.Start, s.Length))));
     }
 }

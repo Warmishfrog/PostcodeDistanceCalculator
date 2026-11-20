@@ -1,5 +1,4 @@
 using System.Globalization;
-using PostcodeDistanceCalculator.Extensions;
 using PostcodeDistanceCalculator.Helpers;
 using PostcodeDistanceCalculator.Models;
 using PostcodeDistanceCalculator.Services;
@@ -19,7 +18,7 @@ public sealed class GoogleMapsVerificationTests : IDisposable
         Directory.Delete(folder, recursive: true);
     }
 
-    private static Journey ThreeStops() => new("", "raw", [new Leg("SW1A1AA", "M11AE", 200_000), new Leg("M11AE", "EH11YZ", 100_000)]);
+    private static Journey ThreeStops() => new("", [new Leg("SW1A1AA", "M11AE", 200_000), new Leg("M11AE", "EH11YZ", 100_000)]);
 
     [Fact]
     public void Link_goes_from_first_to_last_postcode_through_the_others()
@@ -58,7 +57,7 @@ public sealed class GoogleMapsVerificationTests : IDisposable
     [InlineData("SW1A 1AA", "SW1A 1AA")]
     public void Postcodes_get_their_space_back(string normalised, string expected)
     {
-        Assert.Equal(expected, GoogleMapsLink.FormatPostcode(normalised));
+        Assert.Equal(expected, Postcode.Format(normalised));
     }
 
     [Theory]
